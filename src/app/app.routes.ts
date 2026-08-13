@@ -61,6 +61,12 @@ export const routes: Routes = [
       },
 
       {
+        path: 'work-orders',
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/work-orders/pages/work-order-list/work-order-list').then(m => m.WorkOrderList)
+      },
+
+      {
         path: '404',
         loadComponent: () =>
           import('./features/errors/not-found/not-found')

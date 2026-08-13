@@ -54,5 +54,17 @@ export const PERMISSIONS = {
     Create: 'Permissions.Employees.Create',
     Edit: 'Permissions.Employees.Edit',
     Delete: 'Permissions.Employees.Delete',
+  },
+
+  /**
+   * Permisos para el módulo de Solicitudes de Servicio / Órdenes de Trabajo.
+   */
+  WorkOrders: {
+    View: 'Permissions.WorkOrders.View',
+    Create: 'Permissions.WorkOrders.Create',
+    Edit: 'Permissions.WorkOrders.Edit',
+    Schedule: 'Permissions.WorkOrders.Schedule',
+    Complete: 'Permissions.WorkOrders.Complete',
+    Cancel: 'Permissions.WorkOrders.Cancel',
   }
 } as const;

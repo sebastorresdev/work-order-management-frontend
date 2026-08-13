@@ -13,6 +13,13 @@ export const MENU: MenuGroup[] = [
     ]
   },
   {
+    title: 'Operaciones',
+    icon: 'tool',
+    children: [
+      { label: 'Solicitudes de Servicio', link: '/work-orders', permission: PERMISSIONS.WorkOrders.View },
+    ]
+  },
+  {
     title: 'Seguridad',
     icon: 'safety',
     children: [

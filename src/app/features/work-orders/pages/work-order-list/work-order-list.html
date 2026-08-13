@@ -1,0 +1,483 @@
+<div class="space-y-6">
+  <!-- Header Bar -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800 pb-4">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Gestión de Solicitudes de Servicio</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Administración y seguimiento de instalaciones, averías y encomiendas para atención técnica.
+      </p>
+    </div>
+    <div>
+      <button nz-button nzType="primary" (click)="openCreateModal()" class="flex items-center gap-2 shadow-md">
+        <nz-icon nzType="plus" />
+        <span>Nueva Solicitud</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-200/80 dark:border-gray-800 flex flex-wrap items-center gap-3">
+    <div class="flex-1 min-w-[240px]">
+      <nz-input-group [nzPrefix]="suffixIconSearch">
+        <input type="text" nz-input placeholder="Buscar por ticket, cliente, teléfono, distrito..." [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" />
+      </nz-input-group>
+      <ng-template #suffixIconSearch>
+        <nz-icon nzType="search" class="text-gray-400" />
+      </ng-template>
+    </div>
+
+    <!-- Filter Status -->
+    <div class="w-44">
+      <nz-select class="w-full" nzAllowClear nzPlaceHolder="Estado" [(ngModel)]="selectedStatus" (ngModelChange)="onSearch()">
+        <nz-option [nzValue]="WorkOrderStatus.Pendiente" nzLabel="Pendiente"></nz-option>
+        <nz-option [nzValue]="WorkOrderStatus.Observado" nzLabel="Observado"></nz-option>
+        <nz-option [nzValue]="WorkOrderStatus.Agendado" nzLabel="Agendado"></nz-option>
+        <nz-option [nzValue]="WorkOrderStatus.Completado" nzLabel="Completado"></nz-option>
+        <nz-option [nzValue]="WorkOrderStatus.Rechazado" nzLabel="Rechazado"></nz-option>
+        <nz-option [nzValue]="WorkOrderStatus.Cancelado" nzLabel="Cancelado"></nz-option>
+      </nz-select>
+    </div>
+
+    <!-- Filter Request Type -->
+    <div class="w-44">
+      <nz-select class="w-full" nzAllowClear nzPlaceHolder="Tipo Solicitud" [(ngModel)]="selectedRequestType" (ngModelChange)="onSearch()">
+        <nz-option [nzValue]="WorkOrderType.Instalacion" nzLabel="Instalación"></nz-option>
+        <nz-option [nzValue]="WorkOrderType.Averia" nzLabel="Avería"></nz-option>
+        <nz-option [nzValue]="WorkOrderType.Encomienda" nzLabel="Encomienda"></nz-option>
+      </nz-select>
+    </div>
+
+    <!-- Filter Branch -->
+    <div class="w-48" *ngIf="branches().length > 1">
+      <nz-select class="w-full" nzAllowClear nzPlaceHolder="Sede" [(ngModel)]="selectedBranchId" (ngModelChange)="onSearch()">
+        <nz-option *ngFor="let b of branches()" [nzValue]="b.id" [nzLabel]="b.name"></nz-option>
+      </nz-select>
+    </div>
+
+    <button nz-button nzType="default" (click)="onSearch()" class="flex items-center gap-1">
+      <nz-icon nzType="filter" />
+      <span>Filtrar</span>
+    </button>
+  </div>
+
+  <!-- Table -->
+  <nz-table
+    #basicTable
+    [nzData]="workOrders()"
+    [nzLoading]="loading()"
+    [nzFrontPagination]="false"
+    [nzTotal]="totalCount()"
+    [nzPageIndex]="pageNumber()"
+    [nzPageSize]="pageSize()"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    [nzScroll]="{ x: '1100px' }"
+    class="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+    <thead>
+      <tr>
+        <th nzWidth="130px">Ticket</th>
+        <th nzWidth="130px">Tipo</th>
+        <th>Cliente</th>
+        <th>Ubicación</th>
+        <th nzWidth="130px">Estado</th>
+        <th nzWidth="100px">Prioridad</th>
+        <th>Programación</th>
+        <th>Solicitante</th>
+        <th nzWidth="140px" nzRight>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let item of basicTable.data" class="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors">
+        <td>
+          <a (click)="openDetailDrawer(item)" class="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
+            {{ item.ticketNumber }}
+          </a>
+        </td>
+        <td>
+          <nz-tag [nzColor]="getTypeColor(item.requestType)" class="font-medium rounded-md px-2.5">
+            {{ item.requestTypeName }}
+          </nz-tag>
+        </td>
+        <td>
+          <div class="font-semibold text-gray-900 dark:text-gray-100">{{ item.clientName }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">Cód: {{ item.clientCode }} | Tel: {{ item.clientPhone }}</div>
+        </td>
+        <td>
+          <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.district }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]" [title]="item.address">
+            {{ item.address }}
+          </div>
+        </td>
+        <td>
+          <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
+            {{ item.statusName }}
+          </nz-tag>
+        </td>
+        <td>
+          <nz-tag [nzColor]="getPriorityColor(item.priority)" class="rounded-md">
+            {{ item.priorityName }}
+          </nz-tag>
+        </td>
+        <td>
+          <div *ngIf="item.scheduledDate" class="text-xs">
+            <div class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ item.scheduledDate }}</div>
+            <div class="text-gray-500">{{ item.scheduledSlot }}</div>
+            <div *ngIf="item.assignedTechnicianName" class="text-blue-600 dark:text-blue-400 font-medium">👷 {{ item.assignedTechnicianName }}</div>
+          </div>
+          <span *ngIf="!item.scheduledDate" class="text-xs text-gray-400 italic">Sin agendar</span>
+        </td>
+        <td>
+          <div class="text-xs">
+            <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.createdByUserName }}</div>
+            <div class="text-gray-400">{{ item.branchName }}</div>
+          </div>
+        </td>
+        <td nzRight>
+          <div class="flex items-center gap-1">
+            <!-- Ver Detalle -->
+            <button nz-button nzType="text" nzSize="small" (click)="openDetailDrawer(item)" nz-tooltip title="Ver detalle">
+              <nz-icon nzType="eye" class="text-blue-600" />
+            </button>
+
+            <!-- Agendar / Reprogramar (Backoffice) -->
+            <button
+              *ngIf="item.status === WorkOrderStatus.Pendiente || item.status === WorkOrderStatus.Agendado"
+              nz-button nzType="text" nzSize="small"
+              (click)="openScheduleModal(item)"
+              nz-tooltip [title]="item.status === WorkOrderStatus.Agendado ? 'Reprogramar' : 'Agendar'">
+              <nz-icon nzType="calendar" class="text-emerald-600" />
+            </button>
+
+            <!-- Editar (Solo Vendedor cuando está Pendiente u Observado) -->
+            <button
+              *ngIf="item.status === WorkOrderStatus.Pendiente || item.status === WorkOrderStatus.Observado"
+              nz-button nzType="text" nzSize="small"
+              (click)="openEditModal(item)"
+              nz-tooltip title="Editar solicitud">
+              <nz-icon nzType="edit" class="text-indigo-600" />
+            </button>
+
+            <!-- Observar (Backoffice) -->
+            <button
+              *ngIf="item.status === WorkOrderStatus.Pendiente"
+              nz-button nzType="text" nzSize="small"
+              (click)="openReasonModal(item, 'observe')"
+              nz-tooltip title="Observar solicitud">
+              <nz-icon nzType="warning" class="text-amber-500" />
+            </button>
+
+            <!-- Completar (Backoffice) -->
+            <button
+              *ngIf="item.status === WorkOrderStatus.Agendado || item.status === WorkOrderStatus.Pendiente"
+              nz-button nzType="text" nzSize="small"
+              nz-popconfirm nzPopconfirmTitle="¿Confirmas que la solicitud fue completada exitosamente?"
+              (nzOnConfirm)="handleComplete(item)"
+              nz-tooltip title="Marcar como Completado">
+              <nz-icon nzType="check-circle" class="text-green-600" />
+            </button>
+
+            <!-- Rechazar / Cancelar -->
+            <button
+              *ngIf="item.status !== WorkOrderStatus.Completado && item.status !== WorkOrderStatus.Cancelado && item.status !== WorkOrderStatus.Rechazado"
+              nz-button nzType="text" nzSize="small"
+              (click)="openReasonModal(item, 'cancel')"
+              nz-tooltip title="Cancelar solicitud">
+              <nz-icon nzType="close-circle" class="text-red-500" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+</div>
+
+<!-- MODAL: Crear / Editar Solicitud -->
+<nz-modal
+  [(nzVisible)]="isCreateModalVisible"
+  [nzTitle]="modalTitle"
+  (nzOnCancel)="isCreateModalVisible = false"
+  (nzOnOk)="handleCreateSubmit()"
+  [nzOkText]="editingWorkOrderId ? 'Guardar Cambios' : 'Registrar Solicitud'"
+  nzWidth="720px">
+  <ng-container *nzModalContent>
+    <form [formGroup]="workOrderForm" class="space-y-4 pt-2">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tipo de Solicitud -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Tipo de Solicitud *</label>
+          <nz-select formControlName="requestType" class="w-full">
+            <nz-option [nzValue]="WorkOrderType.Instalacion" nzLabel="Instalación"></nz-option>
+            <nz-option [nzValue]="WorkOrderType.Averia" nzLabel="Avería"></nz-option>
+            <nz-option [nzValue]="WorkOrderType.Encomienda" nzLabel="Encomienda"></nz-option>
+          </nz-select>
+        </div>
+
+        <!-- Prioridad -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Prioridad *</label>
+          <nz-select formControlName="priority" class="w-full">
+            <nz-option [nzValue]="WorkOrderPriority.Baja" nzLabel="Baja"></nz-option>
+            <nz-option [nzValue]="WorkOrderPriority.Media" nzLabel="Media"></nz-option>
+            <nz-option [nzValue]="WorkOrderPriority.Alta" nzLabel="Alta"></nz-option>
+            <nz-option [nzValue]="WorkOrderPriority.Urgente" nzLabel="Urgente"></nz-option>
+          </nz-select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Código Cliente -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Código Cliente *</label>
+          <input nz-input formControlName="clientCode" placeholder="Ej. 54053998" />
+        </div>
+
+        <!-- Nombre Cliente -->
+        <div class="md:col-span-2">
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Nombre Completo Cliente *</label>
+          <input nz-input formControlName="clientName" placeholder="Ej. Raúl Lara" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Teléfono -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Teléfono Principal *</label>
+          <input nz-input formControlName="clientPhone" placeholder="Ej. 907519044" />
+        </div>
+
+        <!-- Teléfono Secundario -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Teléfono Secundario</label>
+          <input nz-input formControlName="clientSecondaryPhone" placeholder="Opcional" />
+        </div>
+
+        <!-- Sede -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Sede Asignada *</label>
+          <nz-select formControlName="branchId" class="w-full" nzPlaceHolder="Seleccionar Sede">
+            <nz-option *ngFor="let b of branches()" [nzValue]="b.id" [nzLabel]="b.name"></nz-option>
+          </nz-select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Distrito -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Distrito *</label>
+          <input nz-input formControlName="district" placeholder="Ej. CHICLAYO - JLO" />
+        </div>
+
+        <!-- Dirección -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Dirección Exacta *</label>
+          <input nz-input formControlName="address" placeholder="Ej. Calle Los Cedros 123" />
+        </div>
+      </div>
+
+      <!-- Referencia de Dirección -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Referencia de Ubicación</label>
+        <input nz-input formControlName="addressReference" placeholder="Ej. Frente al parque principal" />
+      </div>
+
+      <!-- Descripción -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Descripción de la Solicitud / Trabajo a Realizar *</label>
+        <textarea nz-input formControlName="description" rows="3" placeholder="Detalle lo que requiere el cliente..."></textarea>
+      </div>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- MODAL: Agendar / Reprogramar (Backoffice) -->
+<nz-modal
+  [(nzVisible)]="isScheduleModalVisible"
+  [nzTitle]="selectedWorkOrder?.status === WorkOrderStatus.Agendado ? 'Reprogramar Atención' : 'Agendar Solicitud'"
+  (nzOnCancel)="isScheduleModalVisible = false"
+  (nzOnOk)="handleScheduleSubmit()"
+  nzOkText="Confirmar Agendamiento"
+  nzWidth="540px">
+  <ng-container *nzModalContent>
+    <form [formGroup]="scheduleForm" class="space-y-4 pt-2">
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Fecha Programada de Atención *</label>
+        <nz-date-picker formControlName="scheduledDate" class="w-full" nzFormat="dd/MM/yyyy"></nz-date-picker>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Turno de Atención *</label>
+        <nz-select formControlName="scheduledSlot" class="w-full">
+          <nz-option nzValue="MAÑANA (8am - 1pm)" nzLabel="MAÑANA (8:00 am - 1:00 pm)"></nz-option>
+          <nz-option nzValue="TARDE (2pm - 6pm)" nzLabel="TARDE (2:00 pm - 6:00 pm)"></nz-option>
+          <nz-option nzValue="HORA EXACTA" nzLabel="HORA EXACTA COORDINADA"></nz-option>
+        </nz-select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Técnico Asignado</label>
+        <nz-select formControlName="assignedTechnicianId" class="w-full" nzAllowClear nzPlaceHolder="Seleccionar Técnico (Opcional)">
+          <nz-option *ngFor="let t of technicians()" [nzValue]="t.id" [nzLabel]="t.displayName || t.userName"></nz-option>
+        </nz-select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Notas de Agendamiento / Observaciones</label>
+        <textarea nz-input formControlName="notes" rows="2" placeholder="Indicaciones para la visita técnica..."></textarea>
+      </div>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- MODAL: Motivo (Observar / Rechazar / Cancelar) -->
+<nz-modal
+  [(nzVisible)]="isReasonModalVisible"
+  [nzTitle]="reasonModalTitle"
+  (nzOnCancel)="isReasonModalVisible = false"
+  (nzOnOk)="handleReasonSubmit()"
+  nzOkText="Confirmar"
+  nzWidth="480px">
+  <ng-container *nzModalContent>
+    <form [formGroup]="reasonForm" class="pt-2">
+      <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Ingrese el motivo *</label>
+      <textarea nz-input formControlName="reason" rows="3" placeholder="Escriba detalladamente las razones..."></textarea>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- DRAWER: Detalle Completo de Solicitud -->
+<nz-drawer
+  [nzVisible]="isDetailDrawerVisible"
+  nzPlacement="right"
+  [nzTitle]="'Detalle de Solicitud: ' + (selectedWorkOrder?.ticketNumber || '')"
+  (nzOnClose)="isDetailDrawerVisible = false"
+  nzWidth="600px">
+  <ng-container *nzDrawerContent>
+    <div *ngIf="workOrderDetail()" class="space-y-6">
+      <!-- Status Banner -->
+      <div class="p-4 rounded-xl flex items-center justify-between bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        <div>
+          <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Estado Actual</span>
+          <div class="mt-1">
+            <nz-tag [nzColor]="getStatusColor(workOrderDetail()!.status)" class="text-sm font-bold px-3 py-0.5 rounded-lg">
+              {{ workOrderDetail()!.statusName }}
+            </nz-tag>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Tipo</span>
+          <div class="mt-1">
+            <nz-tag [nzColor]="getTypeColor(workOrderDetail()!.requestType)" class="text-sm font-semibold px-3 py-0.5 rounded-lg">
+              {{ workOrderDetail()!.requestTypeName }}
+            </nz-tag>
+          </div>
+        </div>
+
+        <div>
+          <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Prioridad</span>
+          <div class="mt-1">
+            <nz-tag [nzColor]="getPriorityColor(workOrderDetail()!.priority)" class="text-sm font-semibold px-3 py-0.5 rounded-lg">
+              {{ workOrderDetail()!.priorityName }}
+            </nz-tag>
+          </div>
+        </div>
+      </div>
+
+      <nz-tabs>
+        <!-- Tab 1: Información de la Solicitud -->
+        <nz-tab nzTitle="Información General">
+          <div class="space-y-4 pt-3">
+            <div class="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
+              <div>
+                <span class="text-xs text-gray-400">Cliente</span>
+                <p class="font-semibold text-gray-900 dark:text-white">{{ workOrderDetail()!.clientName }}</p>
+                <p class="text-xs text-gray-500">Cód: {{ workOrderDetail()!.clientCode }}</p>
+              </div>
+
+              <div>
+                <span class="text-xs text-gray-400">Teléfonos de Contacto</span>
+                <p class="font-semibold text-gray-900 dark:text-white">📞 {{ workOrderDetail()!.clientPhone }}</p>
+                <p *ngIf="workOrderDetail()!.clientSecondaryPhone" class="text-xs text-gray-500">Alt: {{ workOrderDetail()!.clientSecondaryPhone }}</p>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
+              <span class="text-xs text-gray-400">Ubicación y Dirección</span>
+              <p class="font-semibold text-gray-900 dark:text-white">📍 {{ workOrderDetail()!.district }} - {{ workOrderDetail()!.address }}</p>
+              <p *ngIf="workOrderDetail()!.addressReference" class="text-xs text-gray-500 mt-0.5">Ref: {{ workOrderDetail()!.addressReference }}</p>
+            </div>
+
+            <div>
+              <span class="text-xs text-gray-400">Descripción de la Solicitud</span>
+              <p class="mt-1 p-3 bg-blue-50/40 dark:bg-gray-800/40 rounded-lg text-sm text-gray-800 dark:text-gray-200 border border-blue-100 dark:border-gray-700">
+                {{ workOrderDetail()!.description }}
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-xs text-gray-400">Solicitado por</span>
+                <p class="font-medium text-gray-800 dark:text-gray-200">{{ workOrderDetail()!.createdByUserName }}</p>
+                <p class="text-xs text-gray-400">Sede {{ workOrderDetail()!.branchName }}</p>
+              </div>
+
+              <div>
+                <span class="text-xs text-gray-400">Fecha de Registro</span>
+                <p class="font-medium text-gray-800 dark:text-gray-200">{{ workOrderDetail()!.created | date:'dd/MM/yyyy HH:mm' }}</p>
+              </div>
+            </div>
+
+            <!-- Notes sections if observed/rejected/completed -->
+            <div *ngIf="workOrderDetail()!.observationNotes" class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-lg">
+              <span class="text-xs font-bold text-amber-800 dark:text-amber-400">⚠️ Motivo de Observación</span>
+              <p class="text-xs text-amber-900 dark:text-amber-200 mt-0.5">{{ workOrderDetail()!.observationNotes }}</p>
+            </div>
+
+            <div *ngIf="workOrderDetail()!.rejectionReason" class="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 rounded-lg">
+              <span class="text-xs font-bold text-red-800 dark:text-red-400">❌ Motivo de Rechazo</span>
+              <p class="text-xs text-red-900 dark:text-red-200 mt-0.5">{{ workOrderDetail()!.rejectionReason }}</p>
+            </div>
+          </div>
+        </nz-tab>
+
+        <!-- Tab 2: Historial de Estados (Timeline Audit) -->
+        <nz-tab nzTitle="Historial de Estados">
+          <div class="pt-4">
+            <nz-timeline>
+              <nz-timeline-item *ngFor="let h of workOrderDetail()!.statusHistory">
+                <div class="flex items-center gap-2">
+                  <nz-tag [nzColor]="getStatusColor(h.statusTo)">{{ h.statusToName }}</nz-tag>
+                  <span class="text-xs text-gray-400">{{ h.timestamp | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <p class="text-xs font-medium text-gray-800 dark:text-gray-200 mt-1">{{ h.comments }}</p>
+                <p class="text-xs text-gray-400">Por: {{ h.changedByUserName }}</p>
+              </nz-timeline-item>
+            </nz-timeline>
+          </div>
+        </nz-tab>
+
+        <!-- Tab 3: Intentos de Agendamiento / Visitas -->
+        <nz-tab nzTitle="Historial de Agendamientos">
+          <div class="pt-3 space-y-3">
+            <div *ngFor="let s of workOrderDetail()!.scheduleHistory" class="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-lg border border-gray-200 dark:border-gray-800">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-sm text-blue-600 dark:text-blue-400">📅 {{ s.scheduledDate }} ({{ s.scheduledSlot }})</span>
+                <span class="text-xs text-gray-400">{{ s.scheduledAt | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <p *ngIf="s.assignedTechnicianName" class="text-xs font-medium text-gray-700 dark:text-gray-300 mt-1">
+                👷 Técnico: {{ s.assignedTechnicianName }}
+              </p>
+              <p *ngIf="s.notes" class="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                "{{ s.notes }}"
+              </p>
+              <div class="text-xs text-gray-400 mt-1 text-right">Agendado por: {{ s.scheduledByUserName }}</div>
+            </div>
+            <div *ngIf="workOrderDetail()!.scheduleHistory.length === 0" class="text-center py-6 text-gray-400 text-xs italic">
+              No hay agendamientos registrados.
+            </div>
+          </div>
+        </nz-tab>
+      </nz-tabs>
+    </div>
+  </ng-container>
+</nz-drawer>
