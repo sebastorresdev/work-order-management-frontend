@@ -15,6 +15,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'work-orders/new',
+    canActivate: [authGuard, permissionGuard(PERMISSIONS.WorkOrders.Create)],
+    loadComponent: () => import('./features/work-orders/pages/work-order-create-mobile/work-order-create-mobile').then(m => m.WorkOrderCreateMobileComponent)
+  },
+
+  {
     path: '',
     loadComponent: () => import('./layout/layout').then(m => m.Layout),
     canActivate: [authGuard],
@@ -62,18 +68,8 @@ export const routes: Routes = [
 
       {
         path: 'work-orders',
-        children: [
-          {
-            path: '',
-            canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
-            loadComponent: () => import('./features/work-orders/pages/work-order-list/work-order-list').then(m => m.WorkOrderList)
-          },
-          {
-            path: 'new',
-            canActivate: [permissionGuard(PERMISSIONS.WorkOrders.Create)],
-            loadComponent: () => import('./features/work-orders/pages/work-order-create-mobile/work-order-create-mobile').then(m => m.WorkOrderCreateMobileComponent)
-          }
-        ]
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/work-orders/pages/work-order-list/work-order-list').then(m => m.WorkOrderList)
       },
 
       {

@@ -56,19 +56,6 @@ export class WorkOrderCreateMobileComponent implements OnInit {
   WorkOrderPriority = WorkOrderPriority;
   WorkOrderStatus = WorkOrderStatus;
 
-  // Preset Districts for Quick Selection
-  districts = [
-    'CHICLAYO',
-    'J.L. ORTIZ',
-    'LA VICTORIA',
-    'LAMBAYEQUE',
-    'PIMENTEL',
-    'FERREÑAFE',
-    'MONSEFÚ',
-    'MOTUPE',
-    'OLMOS'
-  ];
-
   // Quick Preset Descriptions
   presetNotes = [
     'Cliente ya cuenta con antena y cableado.',
