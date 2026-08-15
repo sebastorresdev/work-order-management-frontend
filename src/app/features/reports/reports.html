@@ -1,0 +1,312 @@
+<div class="p-4 md:p-6 space-y-6 max-w-[1600px] mx-auto">
+
+  <!-- Encabezado de la Pantalla -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <nz-icon nzType="bar-chart" class="text-blue-600 dark:text-blue-400" />
+        <span>Reportes y Analítica de Gestión</span>
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Monitoree indicadores clave de rendimiento (KPIs), tiempos de atención y productividad por sede.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button
+        nz-button
+        nzType="default"
+        (click)="loadReport()"
+        [nzLoading]="loading()"
+        class="flex items-center gap-1.5 rounded-lg">
+        <nz-icon nzType="reload" />
+        <span>Actualizar</span>
+      </button>
+
+      <button
+        nz-button
+        nzType="primary"
+        (click)="exportReport()"
+        [nzLoading]="exporting()"
+        class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 border-none rounded-lg shadow-sm">
+        <nz-icon nzType="download" />
+        <span>Exportar a Excel (CSV)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros -->
+  <div class="bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-3">
+    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Filtros de Búsqueda</span>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+      <!-- Fecha Inicio -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Fecha Desde</label>
+        <nz-date-picker [(ngModel)]="startDate" nzFormat="dd/MM/yyyy" class="w-full"></nz-date-picker>
+      </div>
+
+      <!-- Fecha Fin -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Fecha Hasta</label>
+        <nz-date-picker [(ngModel)]="endDate" nzFormat="dd/MM/yyyy" class="w-full"></nz-date-picker>
+      </div>
+
+      <!-- Sede -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Sede</label>
+        <nz-select [(ngModel)]="selectedBranchId" nzPlaceHolder="Todas las sedes" nzAllowClear class="w-full">
+          <nz-option *ngFor="let b of branches()" [nzValue]="b.id" [nzLabel]="b.name"></nz-option>
+        </nz-select>
+      </div>
+
+      <!-- Tipo de Solicitud -->
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de Solicitud</label>
+        <nz-select [(ngModel)]="selectedRequestType" nzPlaceHolder="Todos los tipos" nzAllowClear class="w-full">
+          <nz-option [nzValue]="1" nzLabel="Instalación"></nz-option>
+          <nz-option [nzValue]="2" nzLabel="Avería"></nz-option>
+          <nz-option [nzValue]="3" nzLabel="Encomienda"></nz-option>
+        </nz-select>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex items-center gap-2">
+        <button nz-button nzType="primary" (click)="loadReport()" [nzLoading]="loading()" class="flex-1 rounded-lg">
+          <nz-icon nzType="search" />
+          <span>Filtrar</span>
+        </button>
+
+        <button nz-button nzType="default" (click)="resetFilters()" class="rounded-lg" nz-tooltip title="Limpiar Filtros">
+          <nz-icon nzType="clear" />
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spinner de Carga Global -->
+  <div *ngIf="loading()" class="p-12 text-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
+    <nz-spin nzSimple nzSize="large"></nz-spin>
+    <p class="text-sm text-gray-500 mt-3 font-medium">Procesando agregaciones y generando informe analítico...</p>
+  </div>
+
+  <!-- Secciones de Contenido (KPIs y Gráficos) -->
+  <ng-container *ngIf="!loading() && data() as rep">
+
+    <!-- Tarjetas Principales de KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      
+      <!-- KPI 1: Total Solicitudes -->
+      <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-blue-100 uppercase tracking-wider">Total Solicitudes</p>
+            <h2 class="text-3xl font-extrabold text-white mt-1">{{ rep.kpis.totalWorkOrders }}</h2>
+          </div>
+          <div class="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+            <nz-icon nzType="file-text" class="text-2xl text-white" />
+          </div>
+        </div>
+        <div class="mt-4 flex items-center gap-3 text-xs text-blue-100">
+          <span>📅 Período seleccionado</span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Tasa de Finalización -->
+      <div class="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-emerald-100 uppercase tracking-wider">Tasa de Éxito / Finalización</p>
+            <h2 class="text-3xl font-extrabold text-white mt-1">{{ rep.kpis.completionRatePercentage }}%</h2>
+          </div>
+          <div class="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+            <nz-icon nzType="check-circle" class="text-2xl text-white" />
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-emerald-100">
+          <span>✔ {{ rep.kpis.completedCount }} solicitudes completadas</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Tasa de Observaciones -->
+      <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-amber-100 uppercase tracking-wider">Tasa de Observaciones</p>
+            <h2 class="text-3xl font-extrabold text-white mt-1">{{ rep.kpis.observationRatePercentage }}%</h2>
+          </div>
+          <div class="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+            <nz-icon nzType="warning" class="text-2xl text-white" />
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-amber-100">
+          <span>⚠️ {{ rep.kpis.observedCount }} registradas con observación</span>
+        </div>
+      </div>
+
+      <!-- KPI 4: Tiempo Promedio de Atención -->
+      <div class="bg-gradient-to-br from-purple-600 to-violet-700 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-purple-100 uppercase tracking-wider">Tiempo Promedio Cierre</p>
+            <h2 class="text-3xl font-extrabold text-white mt-1">{{ rep.kpis.averageResolutionDays }} <span class="text-base font-normal">días</span></h2>
+          </div>
+          <div class="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+            <nz-icon nzType="clock-circle" class="text-2xl text-white" />
+          </div>
+        </div>
+        <div class="mt-4 text-xs text-purple-100">
+          <span>⏱ Desde creación hasta cierre</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sección 2: Desglose por Estado y Tipo -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Distribución por Estado Operativo -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <nz-icon nzType="pie-chart" class="text-blue-500" />
+          <span>Distribución por Estado Operativo</span>
+        </h3>
+
+        <div class="space-y-4 pt-2">
+          <div *ngFor="let s of rep.statusDistribution" class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <nz-tag [nzColor]="getStatusColor(s.statusName)">{{ s.statusName }}</nz-tag>
+              </span>
+              <span class="text-gray-900 dark:text-white font-bold">{{ s.count }} ({{ s.percentage }}%)</span>
+            </div>
+            <nz-progress [nzPercent]="s.percentage" [nzShowInfo]="false" [nzStrokeColor]="s.statusName === 'Completado' ? '#10b981' : s.statusName === 'Observado' ? '#f59e0b' : '#3b82f6'"></nz-progress>
+          </div>
+        </div>
+      </div>
+
+      <!-- Distribución por Tipo de Servicio -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <nz-icon nzType="appstore" class="text-indigo-500" />
+          <span>Distribución por Tipo de Servicio</span>
+        </h3>
+
+        <div class="space-y-4 pt-2">
+          <div *ngFor="let t of rep.typeDistribution" class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold">
+              <span class="text-gray-700 dark:text-gray-300">{{ t.typeName }}</span>
+              <span class="text-gray-900 dark:text-white font-bold">{{ t.count }} solicitudes ({{ t.percentage }}%)</span>
+            </div>
+            <nz-progress [nzPercent]="t.percentage" [nzShowInfo]="false" [nzStrokeColor]="'#6366f1'"></nz-progress>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sección 3: Rendimiento Comparativo por Sede -->
+    <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+      <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <nz-icon nzType="bank" class="text-emerald-500" />
+        <span>Rendimiento Comparativo por Sede</span>
+      </h3>
+
+      <nz-table #branchTable [nzData]="rep.branchPerformance" [nzFrontPagination]="false" [nzShowPagination]="false" nzSize="middle" class="pt-2">
+        <thead>
+          <tr>
+            <th>Sede</th>
+            <th class="text-center">Total Solicitudes</th>
+            <th class="text-center">Completadas</th>
+            <th class="text-center">Agendadas</th>
+            <th class="text-center">Observadas</th>
+            <th class="text-center">Tasa de Éxito (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of branchTable.data">
+            <td class="font-bold text-gray-900 dark:text-white">{{ b.branchName }}</td>
+            <td class="text-center font-semibold text-gray-800 dark:text-gray-200">{{ b.totalWorkOrders }}</td>
+            <td class="text-center text-emerald-600 font-semibold">{{ b.completedCount }}</td>
+            <td class="text-center text-blue-600 font-semibold">{{ b.scheduledCount }}</td>
+            <td class="text-center text-amber-600 font-semibold">{{ b.observedCount }}</td>
+            <td class="text-center">
+              <div class="flex items-center justify-center gap-2">
+                <nz-progress [nzPercent]="b.completionRatePercentage" nzSize="small" class="w-24"></nz-progress>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </nz-table>
+    </div>
+
+    <!-- Sección 4: Rankings de Productividad (Top Vendedores y Top Técnicos) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- Top Vendedores -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <nz-icon nzType="user" class="text-blue-500" />
+          <span>Top Vendedores (Creación de Solicitudes)</span>
+        </h3>
+
+        <div class="space-y-3 pt-2">
+          <div *ngFor="let u of rep.topCreators; let i = index" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 font-extrabold text-xs flex items-center justify-center">
+                #{{ i + 1 }}
+              </span>
+              <div>
+                <p class="font-bold text-sm text-gray-900 dark:text-white">{{ u.userName }}</p>
+                <p class="text-xs text-gray-400">Rol: {{ u.roleName }}</p>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <span class="text-sm font-extrabold text-gray-900 dark:text-white">{{ u.workOrdersCount }} <span class="text-xs font-normal text-gray-400">solicitudes</span></span>
+              <div class="text-xs text-emerald-600 font-medium">✔ {{ u.completedCount }} completadas</div>
+            </div>
+          </div>
+
+          <div *ngIf="rep.topCreators.length === 0" class="text-center py-6 text-xs text-gray-400 italic">
+            No se registraron ventas en este período.
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Técnicos -->
+      <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <nz-icon nzType="tool" class="text-teal-500" />
+          <span>Top Técnicos (Atención en Campo)</span>
+        </h3>
+
+        <div class="space-y-3 pt-2">
+          <div *ngFor="let u of rep.topTechnicians; let i = index" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-full bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-300 font-extrabold text-xs flex items-center justify-center">
+                #{{ i + 1 }}
+              </span>
+              <div>
+                <p class="font-bold text-sm text-gray-900 dark:text-white">{{ u.userName }}</p>
+                <p class="text-xs text-gray-400">Rol: {{ u.roleName }}</p>
+              </div>
+            </div>
+
+            <div class="text-right">
+              <span class="text-sm font-extrabold text-gray-900 dark:text-white">{{ u.workOrdersCount }} <span class="text-xs font-normal text-gray-400">agendadas</span></span>
+              <div class="text-xs text-emerald-600 font-medium">✔ {{ u.completedCount }} completadas</div>
+            </div>
+          </div>
+
+          <div *ngIf="rep.topTechnicians.length === 0" class="text-center py-6 text-xs text-gray-400 italic">
+            No hay servicios agendados a técnicos en este período.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </ng-container>
+
+</div>

@@ -13,6 +13,13 @@ export const MENU: MenuGroup[] = [
     ]
   },
   {
+    title: 'Analítica',
+    icon: 'bar-chart',
+    children: [
+      { label: 'Reportes y Analítica', link: '/reports', permission: PERMISSIONS.WorkOrders.View },
+    ]
+  },
+  {
     title: 'Seguridad',
     icon: 'safety',
     children: [

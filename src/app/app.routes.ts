@@ -64,6 +64,12 @@ export const routes: Routes = [
       },
 
       {
+        path: 'reports',
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/reports/reports').then(m => m.ReportsComponent)
+      },
+
+      {
         path: '404',
         loadComponent: () =>
           import('./features/errors/not-found/not-found')

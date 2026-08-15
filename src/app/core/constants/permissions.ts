@@ -59,5 +59,12 @@ export const PERMISSIONS = {
     Schedule: 'Permissions.WorkOrders.Schedule',
     Complete: 'Permissions.WorkOrders.Complete',
     Cancel: 'Permissions.WorkOrders.Cancel',
+  },
+
+  /**
+   * Permisos para el módulo de Reportes y Analítica.
+   */
+  Reports: {
+    View: 'Permissions.Reports.View',
   }
 } as const;
