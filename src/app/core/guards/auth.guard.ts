@@ -19,7 +19,7 @@ export const authGuard: CanActivateFn = () => {
 
 /**
  * Guard de navegación que evita que usuarios ya autenticados accedan a páginas públicas como el Login.
- * @returns boolean `true` si el usuario NO está autenticado, o redirige a '/home' si ya inició sesión.
+ * @returns boolean `true` si el usuario NO está autenticado, o redirige a '/work-orders' si ya inició sesión.
  */
 export const noAuthGuard: CanActivateFn = () => {
     const authService = inject(AuthService);
@@ -28,6 +28,6 @@ export const noAuthGuard: CanActivateFn = () => {
     if (!authService.isAuthenticated())
         return true;
 
-    router.navigate(['/home']);
+    router.navigate(['/work-orders']);
     return false;
 };

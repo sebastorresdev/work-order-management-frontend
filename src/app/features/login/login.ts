@@ -77,7 +77,7 @@ export class Login {
       };
       this.authService.login(request).subscribe({
         next: () => {
-          this.router.navigate(['/welcome']);
+          this.router.navigate(['/work-orders']);
         },
         error: (err) => {
           console.log(err.error);

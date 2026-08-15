@@ -7,11 +7,11 @@
         Administración y seguimiento de instalaciones, averías y encomiendas para atención técnica.
       </p>
     </div>
-    <div>
-      <button nz-button nzType="primary" (click)="openCreateModal()" class="flex items-center gap-2 shadow-md">
+    <div *ngIf="hasPermission(PERMISSIONS.WorkOrders.Create)">
+      <a nz-button nzType="primary" routerLink="/work-orders/new" class="flex items-center gap-2 shadow-md">
         <nz-icon nzType="plus" />
         <span>Nueva Solicitud</span>
-      </button>
+      </a>
     </div>
   </div>
 
@@ -60,135 +60,210 @@
     </button>
   </div>
 
-  <!-- Table -->
-  <nz-table
-    #basicTable
-    [nzData]="workOrders()"
-    [nzLoading]="loading()"
-    [nzFrontPagination]="false"
-    [nzTotal]="totalCount()"
-    [nzPageIndex]="pageNumber()"
-    [nzPageSize]="pageSize()"
-    (nzPageIndexChange)="onPageIndexChange($event)"
-    (nzPageSizeChange)="onPageSizeChange($event)"
-    [nzScroll]="{ x: '1100px' }"
-    class="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
-    <thead>
-      <tr>
-        <th nzWidth="130px">Ticket</th>
-        <th nzWidth="130px">Tipo</th>
-        <th>Cliente</th>
-        <th>Ubicación</th>
-        <th nzWidth="130px">Estado</th>
-        <th nzWidth="100px">Prioridad</th>
-        <th>Programación</th>
-        <th>Solicitante</th>
-        <th nzWidth="140px" nzRight>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let item of basicTable.data" class="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors">
-        <td>
-          <a (click)="openDetailDrawer(item)" class="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
+  <div class="hidden md:block">
+    <nz-table
+      #basicTable
+      [nzData]="workOrders()"
+      [nzLoading]="loading()"
+      [nzFrontPagination]="false"
+      [nzTotal]="totalCount()"
+      [nzPageIndex]="pageNumber()"
+      [nzPageSize]="pageSize()"
+      (nzPageIndexChange)="onPageIndexChange($event)"
+      (nzPageSizeChange)="onPageSizeChange($event)"
+      [nzScroll]="{ x: '1100px' }"
+      class="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+      <thead>
+        <tr>
+          <th nzWidth="130px">Ticket</th>
+          <th nzWidth="130px">Tipo</th>
+          <th>Cliente</th>
+          <th>Ubicación</th>
+          <th nzWidth="130px">Estado</th>
+          <th nzWidth="100px">Prioridad</th>
+          <th>Programación</th>
+          <th>Solicitante</th>
+          <th nzWidth="140px" nzRight>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of basicTable.data" class="hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-colors">
+          <td>
+            <a (click)="openDetailDrawer(item)" class="font-mono font-bold text-blue-600 dark:text-blue-400 hover:underline">
+              {{ item.ticketNumber }}
+            </a>
+          </td>
+          <td>
+            <nz-tag [nzColor]="getTypeColor(item.requestType)" class="font-medium rounded-md px-2.5">
+              {{ item.requestTypeName }}
+            </nz-tag>
+          </td>
+          <td>
+            <div class="font-semibold text-gray-900 dark:text-gray-100">{{ item.clientName }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">Cód: {{ item.clientCode }} | Tel: {{ item.clientPhone }}</div>
+          </td>
+          <td>
+            <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.district }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]" [title]="item.address">
+              {{ item.address }}
+            </div>
+          </td>
+          <td>
+            <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
+              {{ item.statusName }}
+            </nz-tag>
+          </td>
+          <td>
+            <nz-tag [nzColor]="getPriorityColor(item.priority)" class="rounded-md">
+              {{ item.priorityName }}
+            </nz-tag>
+          </td>
+          <td>
+            <div *ngIf="item.scheduledDate" class="text-xs">
+              <div class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ item.scheduledDate }}</div>
+              <div class="text-gray-500">{{ item.scheduledSlot }}</div>
+              <div *ngIf="item.assignedTechnicianName" class="text-blue-600 dark:text-blue-400 font-medium">👷 {{ item.assignedTechnicianName }}</div>
+            </div>
+            <span *ngIf="!item.scheduledDate" class="text-xs text-gray-400 italic">Sin agendar</span>
+          </td>
+          <td>
+            <div class="text-xs">
+              <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.createdByUserName }}</div>
+              <div class="text-gray-400">{{ item.branchName }}</div>
+            </div>
+          </td>
+          <td nzRight>
+            <div class="flex items-center gap-1">
+              <button nz-button nzType="text" nzSize="small" (click)="openDetailDrawer(item)" nz-tooltip title="Ver detalle">
+                <nz-icon nzType="eye" class="text-blue-600" />
+              </button>
+
+              <button
+                *ngIf="canScheduleWorkOrder(item)"
+                nz-button nzType="text" nzSize="small"
+                (click)="openScheduleModal(item)"
+                nz-tooltip [title]="item.status === WorkOrderStatus.Agendado ? 'Reprogramar' : 'Agendar'">
+                <nz-icon nzType="calendar" class="text-emerald-600" />
+              </button>
+
+              <button
+                *ngIf="canEditWorkOrder(item)"
+                nz-button nzType="text" nzSize="small"
+                (click)="openEditModal(item)"
+                nz-tooltip title="Editar solicitud">
+                <nz-icon nzType="edit" class="text-indigo-600" />
+              </button>
+
+              <button
+                *ngIf="canResolveObservation(item)"
+                nz-button nzType="text" nzSize="small"
+                (click)="openResolveModal(item)"
+                nz-tooltip title="Subsanar/Responder Observación">
+                <nz-icon nzType="solution" class="text-amber-600" />
+              </button>
+
+              <button
+                *ngIf="canObserveWorkOrder(item)"
+                nz-button nzType="text" nzSize="small"
+                (click)="openReasonModal(item, 'observe')"
+                nz-tooltip title="Observar solicitud">
+                <nz-icon nzType="warning" class="text-amber-500" />
+              </button>
+
+              <button
+                *ngIf="canCompleteWorkOrder(item)"
+                nz-button nzType="text" nzSize="small"
+                nz-popconfirm nzPopconfirmTitle="¿Confirmas que la solicitud fue completada exitosamente?"
+                (nzOnConfirm)="handleComplete(item)"
+                nz-tooltip title="Marcar como Completado">
+                <nz-icon nzType="check-circle" class="text-green-600" />
+              </button>
+
+              <button
+                *ngIf="canCancelWorkOrder(item)"
+                nz-button nzType="text" nzSize="small"
+                (click)="openReasonModal(item, 'cancel')"
+                nz-tooltip title="Cancelar solicitud">
+                <nz-icon nzType="close-circle" class="text-red-500" />
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </div>
+
+  <div class="md:hidden space-y-3">
+    <div *ngFor="let item of workOrders()" class="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#141414] p-4 shadow-sm">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <button (click)="openDetailDrawer(item)" class="font-mono font-bold text-base text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline">
             {{ item.ticketNumber }}
-          </a>
-        </td>
-        <td>
+          </button>
+          <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ item.clientName }}</div>
+        </div>
+        <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
+          {{ item.statusName }}
+        </nz-tag>
+      </div>
+
+      <div class="space-y-2 text-sm text-gray-700 dark:text-gray-200">
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-gray-500 dark:text-gray-400">Tipo</span>
           <nz-tag [nzColor]="getTypeColor(item.requestType)" class="font-medium rounded-md px-2.5">
             {{ item.requestTypeName }}
           </nz-tag>
-        </td>
-        <td>
-          <div class="font-semibold text-gray-900 dark:text-gray-100">{{ item.clientName }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Cód: {{ item.clientCode }} | Tel: {{ item.clientPhone }}</div>
-        </td>
-        <td>
-          <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.district }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]" [title]="item.address">
-            {{ item.address }}
-          </div>
-        </td>
-        <td>
-          <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
-            {{ item.statusName }}
-          </nz-tag>
-        </td>
-        <td>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+          <span class="text-gray-500 dark:text-gray-400">Prioridad</span>
           <nz-tag [nzColor]="getPriorityColor(item.priority)" class="rounded-md">
             {{ item.priorityName }}
           </nz-tag>
-        </td>
-        <td>
-          <div *ngIf="item.scheduledDate" class="text-xs">
-            <div class="font-semibold text-gray-900 dark:text-gray-100">📅 {{ item.scheduledDate }}</div>
-            <div class="text-gray-500">{{ item.scheduledSlot }}</div>
-            <div *ngIf="item.assignedTechnicianName" class="text-blue-600 dark:text-blue-400 font-medium">👷 {{ item.assignedTechnicianName }}</div>
-          </div>
-          <span *ngIf="!item.scheduledDate" class="text-xs text-gray-400 italic">Sin agendar</span>
-        </td>
-        <td>
-          <div class="text-xs">
-            <div class="font-medium text-gray-800 dark:text-gray-200">{{ item.createdByUserName }}</div>
-            <div class="text-gray-400">{{ item.branchName }}</div>
-          </div>
-        </td>
-        <td nzRight>
-          <div class="flex items-center gap-1">
-            <!-- Ver Detalle -->
-            <button nz-button nzType="text" nzSize="small" (click)="openDetailDrawer(item)" nz-tooltip title="Ver detalle">
-              <nz-icon nzType="eye" class="text-blue-600" />
-            </button>
+        </div>
 
-            <!-- Agendar / Reprogramar (Backoffice) -->
-            <button
-              *ngIf="item.status === WorkOrderStatus.Pendiente || item.status === WorkOrderStatus.Agendado"
-              nz-button nzType="text" nzSize="small"
-              (click)="openScheduleModal(item)"
-              nz-tooltip [title]="item.status === WorkOrderStatus.Agendado ? 'Reprogramar' : 'Agendar'">
-              <nz-icon nzType="calendar" class="text-emerald-600" />
-            </button>
+        <div class="flex flex-col gap-1">
+          <span class="text-gray-500 dark:text-gray-400">Cliente</span>
+          <span class="font-medium">{{ item.clientName }}</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ item.clientCode }} · {{ item.clientPhone }}</span>
+        </div>
 
-            <!-- Editar (Solo Vendedor cuando está Pendiente u Observado) -->
-            <button
-              *ngIf="item.status === WorkOrderStatus.Pendiente || item.status === WorkOrderStatus.Observado"
-              nz-button nzType="text" nzSize="small"
-              (click)="openEditModal(item)"
-              nz-tooltip title="Editar solicitud">
-              <nz-icon nzType="edit" class="text-indigo-600" />
-            </button>
+        <div class="flex flex-col gap-1">
+          <span class="text-gray-500 dark:text-gray-400">Ubicación</span>
+          <span class="font-medium">{{ item.district }}</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400 break-words">{{ item.address }}</span>
+        </div>
 
-            <!-- Observar (Backoffice) -->
-            <button
-              *ngIf="item.status === WorkOrderStatus.Pendiente"
-              nz-button nzType="text" nzSize="small"
-              (click)="openReasonModal(item, 'observe')"
-              nz-tooltip title="Observar solicitud">
-              <nz-icon nzType="warning" class="text-amber-500" />
-            </button>
+        <div *ngIf="item.scheduledDate" class="flex flex-col gap-1">
+          <span class="text-gray-500 dark:text-gray-400">Programación</span>
+          <span class="font-medium">{{ item.scheduledDate }}</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ item.scheduledSlot }}</span>
+        </div>
+      </div>
 
-            <!-- Completar (Backoffice) -->
-            <button
-              *ngIf="item.status === WorkOrderStatus.Agendado || item.status === WorkOrderStatus.Pendiente"
-              nz-button nzType="text" nzSize="small"
-              nz-popconfirm nzPopconfirmTitle="¿Confirmas que la solicitud fue completada exitosamente?"
-              (nzOnConfirm)="handleComplete(item)"
-              nz-tooltip title="Marcar como Completado">
-              <nz-icon nzType="check-circle" class="text-green-600" />
-            </button>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button nz-button nzType="default" nzSize="small" (click)="openDetailDrawer(item)">
+          Ver
+        </button>
 
-            <!-- Rechazar / Cancelar -->
-            <button
-              *ngIf="item.status !== WorkOrderStatus.Completado && item.status !== WorkOrderStatus.Cancelado && item.status !== WorkOrderStatus.Rechazado"
-              nz-button nzType="text" nzSize="small"
-              (click)="openReasonModal(item, 'cancel')"
-              nz-tooltip title="Cancelar solicitud">
-              <nz-icon nzType="close-circle" class="text-red-500" />
-            </button>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
+        <button *ngIf="canScheduleWorkOrder(item)" nz-button nzType="default" nzSize="small" (click)="openScheduleModal(item)">
+          Agendar
+        </button>
+
+        <button *ngIf="canEditWorkOrder(item)" nz-button nzType="default" nzSize="small" (click)="openEditModal(item)">
+          Editar
+        </button>
+
+        <button *ngIf="canResolveObservation(item)" nz-button nzType="default" nzSize="small" (click)="openResolveModal(item)">
+          Subsanar
+        </button>
+
+        <button *ngIf="canCompleteWorkOrder(item)" nz-button nzType="primary" nzSize="small" nz-popconfirm nzPopconfirmTitle="¿Confirmas que la solicitud fue completada exitosamente?" (nzOnConfirm)="handleComplete(item)">
+          Completar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL: Crear / Editar Solicitud -->
@@ -340,6 +415,28 @@
     <form [formGroup]="reasonForm" class="pt-2">
       <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Ingrese el motivo *</label>
       <textarea nz-input formControlName="reason" rows="3" placeholder="Escriba detalladamente las razones..."></textarea>
+    </form>
+  </ng-container>
+</nz-modal>
+
+<!-- MODAL: Subsanar Observación -->
+<nz-modal
+  [(nzVisible)]="isResolveModalVisible"
+  nzTitle="Subsanar / Responder Observación"
+  (nzOnCancel)="isResolveModalVisible = false"
+  (nzOnOk)="handleResolveSubmit()"
+  [nzOkDisabled]="resolveForm.invalid"
+  nzOkText="Subsanar y Reenviar"
+  nzWidth="480px">
+  <ng-container *nzModalContent>
+    <div *ngIf="selectedWorkOrder?.observationNotes" class="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg text-xs">
+      <span class="font-bold text-amber-800 dark:text-amber-400">⚠️ Motivo de la Observación (Backoffice):</span>
+      <p class="text-amber-900 dark:text-amber-200 mt-1 font-medium">{{ selectedWorkOrder?.observationNotes }}</p>
+    </div>
+
+    <form [formGroup]="resolveForm">
+      <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Nota de respuesta / subsanación *</label>
+      <textarea nz-input formControlName="resolutionNotes" rows="3" placeholder="Explique los cambios realizados o la aclaración para el Backoffice..."></textarea>
     </form>
   </ng-container>
 </nz-modal>

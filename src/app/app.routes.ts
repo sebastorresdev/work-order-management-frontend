@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/guards/auth.guard';
+import { authGuard, noAuthGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
 import { PERMISSIONS } from './core/constants/permissions';
 
@@ -11,13 +11,8 @@ export const routes: Routes = [
 
   {
     path: 'login',
+    canActivate: [noAuthGuard],
     loadComponent: () => import('./features/login/login').then(m => m.Login),
-  },
-
-  {
-    path: 'work-orders/new',
-    canActivate: [authGuard, permissionGuard(PERMISSIONS.WorkOrders.Create)],
-    loadComponent: () => import('./features/work-orders/pages/work-order-create-mobile/work-order-create-mobile').then(m => m.WorkOrderCreateMobileComponent)
   },
 
   {
@@ -25,14 +20,7 @@ export const routes: Routes = [
     loadComponent: () => import('./layout/layout').then(m => m.Layout),
     canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'home', pathMatch: 'full' },
-
-      {
-        path: 'welcome',
-        canActivate: [permissionGuard(PERMISSIONS.Welcome.View)],
-        loadChildren: () =>
-          import('./features/welcome/welcome.routes').then(m => m.WELCOME_ROUTES),
-      },
+      { path: '', redirectTo: 'work-orders', pathMatch: 'full' },
 
       {
         path: 'roles',
@@ -69,7 +57,10 @@ export const routes: Routes = [
       {
         path: 'work-orders',
         canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
-        loadComponent: () => import('./features/work-orders/pages/work-order-list/work-order-list').then(m => m.WorkOrderList)
+        children: [
+          { path: '', loadComponent: () => import('./features/work-orders/pages/work-order-list/work-order-list').then(m => m.WorkOrderList) },
+          { path: 'new', canActivate: [permissionGuard(PERMISSIONS.WorkOrders.Create)], loadComponent: () => import('./features/work-orders/pages/work-order-form/work-order-form').then(m => m.WorkOrderForm) }
+        ]
       },
 
       {

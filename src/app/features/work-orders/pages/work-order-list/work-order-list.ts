@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 
 // NG-ZORRO Modules
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -26,6 +27,7 @@ import { WorkOrderService } from '../../../../core/services/work-order.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { BranchService } from '../../../branch/services/branch-service';
 import { UserService } from '../../../user/services/user-service';
+import { PERMISSIONS as APP_PERMISSIONS } from '../../../../core/constants/permissions';
 import {
   WorkOrder,
   WorkOrderDetail,
@@ -43,6 +45,7 @@ import {
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    RouterLink,
     NzTableModule,
     NzButtonModule,
     NzInputModule,
@@ -70,11 +73,13 @@ export class WorkOrderList implements OnInit {
   private userService = inject(UserService);
   private message = inject(NzMessageService);
   private fb = inject(FormBuilder);
+  private router = inject(Router);
 
   // Enums for Template
   WorkOrderStatus = WorkOrderStatus;
   WorkOrderType = WorkOrderType;
   WorkOrderPriority = WorkOrderPriority;
+  readonly PERMISSIONS = APP_PERMISSIONS;
 
   // Signals / State
   loading = signal<boolean>(false);
@@ -97,6 +102,7 @@ export class WorkOrderList implements OnInit {
   isCreateModalVisible = false;
   isScheduleModalVisible = false;
   isReasonModalVisible = false;
+  isResolveModalVisible = false;
   isDetailDrawerVisible = false;
 
   modalTitle = 'Nueva Solicitud';
@@ -111,6 +117,7 @@ export class WorkOrderList implements OnInit {
   workOrderForm!: FormGroup;
   scheduleForm!: FormGroup;
   reasonForm!: FormGroup;
+  resolveForm!: FormGroup;
   completeForm!: FormGroup;
 
   ngOnInit(): void {
@@ -145,6 +152,10 @@ export class WorkOrderList implements OnInit {
       reason: ['', [Validators.required, Validators.minLength(5)]],
     });
 
+    this.resolveForm = this.fb.group({
+      resolutionNotes: ['', [Validators.required, Validators.minLength(5)]],
+    });
+
     this.completeForm = this.fb.group({
       completionNotes: [''],
     });
@@ -154,18 +165,64 @@ export class WorkOrderList implements OnInit {
     this.branchService.getAll().subscribe({
       next: (res: any) => {
         const list = res.data || res.items || res || [];
-        this.branches.set(list);
+        const managedBranchIds = this.auth.branchIds();
+        const filteredBranches = managedBranchIds.length > 0
+          ? list.filter((branch: any) => managedBranchIds.includes(branch.id))
+          : list;
+
+        this.branches.set(filteredBranches);
+
+        if (this.selectedBranchId() && !filteredBranches.some((branch: any) => branch.id === this.selectedBranchId())) {
+          this.selectedBranchId.set(undefined);
+        }
       },
       error: () => {}
     });
 
-    this.userService.getAll().subscribe({
+    this.workOrderService.getTechniciansByBranch().subscribe({
       next: (res: any) => {
         const usersList = res.items || res.data || res || [];
         this.technicians.set(usersList);
       },
       error: () => {}
     });
+  }
+
+  hasPermission(permission: string): boolean {
+    return this.auth.permissions().includes(permission);
+  }
+
+  canEditWorkOrder(item: WorkOrder): boolean {
+    const editableStatuses = [WorkOrderStatus.Pendiente, WorkOrderStatus.Observado];
+    return editableStatuses.includes(item.status) && this.hasPermission(this.PERMISSIONS.WorkOrders.Edit);
+  }
+
+  canResolveObservation(item: WorkOrder): boolean {
+    return item.status === WorkOrderStatus.Observado;
+  }
+
+  canScheduleWorkOrder(item: WorkOrder): boolean {
+    const schedulableStatuses = [WorkOrderStatus.Pendiente, WorkOrderStatus.Agendado];
+    return schedulableStatuses.includes(item.status) && this.hasPermission(this.PERMISSIONS.WorkOrders.Schedule);
+  }
+
+  canObserveWorkOrder(item: WorkOrder): boolean {
+    return item.status === WorkOrderStatus.Pendiente && this.hasPermission(this.PERMISSIONS.WorkOrders.Schedule);
+  }
+
+  canCompleteWorkOrder(item: WorkOrder): boolean {
+    const completableStatuses = [WorkOrderStatus.Agendado, WorkOrderStatus.Pendiente];
+    return completableStatuses.includes(item.status) && this.hasPermission(this.PERMISSIONS.WorkOrders.Complete);
+  }
+
+  canCancelWorkOrder(item: WorkOrder): boolean {
+    const cancellableStatuses = [
+      WorkOrderStatus.Pendiente,
+      WorkOrderStatus.Observado,
+      WorkOrderStatus.Agendado,
+    ];
+
+    return cancellableStatuses.includes(item.status) && this.hasPermission(this.PERMISSIONS.WorkOrders.Cancel);
   }
 
   loadWorkOrders(): void {
@@ -208,14 +265,7 @@ export class WorkOrderList implements OnInit {
 
   // --- Actions ---
   openCreateModal(): void {
-    this.editingWorkOrderId = null;
-    this.modalTitle = 'Nueva Solicitud de Servicio';
-    this.workOrderForm.reset({
-      requestType: WorkOrderType.Instalacion,
-      priority: WorkOrderPriority.Media,
-      branchId: this.branches().length > 0 ? this.branches()[0].id : null
-    });
-    this.isCreateModalVisible = true;
+    this.router.navigate(['/work-orders/new']);
   }
 
   openEditModal(item: WorkOrder): void {
@@ -290,7 +340,38 @@ export class WorkOrderList implements OnInit {
         scheduledDate: new Date(item.scheduledDate)
       });
     }
-    this.isScheduleModalVisible = true;
+
+    // Cargar técnicos pertenecientes a la sede de la solicitud
+    this.workOrderService.getTechniciansByBranch(item.branchId).subscribe({
+      next: (techs: any) => {
+        const list = techs.items || techs.data || techs || [];
+        this.technicians.set(list);
+        this.isScheduleModalVisible = true;
+      },
+      error: () => {
+        this.isScheduleModalVisible = true;
+      }
+    });
+  }
+
+  openResolveModal(item: WorkOrder): void {
+    this.selectedWorkOrder = item;
+    this.resolveForm.reset();
+    this.isResolveModalVisible = true;
+  }
+
+  handleResolveSubmit(): void {
+    if (this.resolveForm.invalid || !this.selectedWorkOrder) return;
+
+    const resolutionNotes = this.resolveForm.value.resolutionNotes;
+    this.workOrderService.resolveObservation(this.selectedWorkOrder.id, resolutionNotes).subscribe({
+      next: () => {
+        this.message.success('Observación subsanada exitosamente. Pasa nuevamente a revisión.');
+        this.isResolveModalVisible = false;
+        this.loadWorkOrders();
+      },
+      error: () => this.message.error('Error al subsanar la observación.')
+    });
   }
 
   handleScheduleSubmit(): void {

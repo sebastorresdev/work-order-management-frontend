@@ -16,4 +16,9 @@ export interface CurrentUserDto {
    * Lista de claves de permisos vigentes otorgados al usuario.
    */
   permissions: string[];
+
+  /**
+   * Lista de identificadores de las sedes asignadas al usuario.
+   */
+  branchIds: string[];
 }

@@ -45,6 +45,7 @@ export interface WorkOrder {
   assignedTechnicianName?: string;
   created: string;
   completedAt?: string;
+  observationNotes?: string;
 }
 
 export interface WorkOrderStatusHistory {

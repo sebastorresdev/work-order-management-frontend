@@ -78,4 +78,14 @@ export class WorkOrderService {
   cancelWorkOrder(id: string, payload: ReasonPayload): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${id}/cancel`, payload);
   }
+
+  resolveObservation(id: string, resolutionNotes: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${id}/resolve-observation`, { resolutionNotes });
+  }
+
+  getTechniciansByBranch(branchId?: string): Observable<any[]> {
+    let params = new HttpParams();
+    if (branchId) params = params.set('branchId', branchId);
+    return this.http.get<any[]>(`${environment.API_URL}/users/technicians`, { params });
+  }
 }

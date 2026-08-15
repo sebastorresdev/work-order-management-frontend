@@ -23,13 +23,6 @@ export const PERMISSIONS = {
   },
 
   /**
-   * Permisos para la vista de Bienvenida.
-   */
-  Welcome: {
-    View: 'Permissions.Welcome.View',
-  },
-
-  /**
    * Permisos para el Dashboard.
    */
   Dashboard: {

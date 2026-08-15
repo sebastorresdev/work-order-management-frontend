@@ -6,17 +6,9 @@ import { MenuGroup } from '../models/menu.types';
  */
 export const MENU: MenuGroup[] = [
   {
-    title: 'Dashboard',
-    icon: 'dashboard',
-    children: [
-      { label: 'Welcome', link: '/welcome', permission: PERMISSIONS.Welcome.View },
-    ]
-  },
-  {
     title: 'Operaciones',
     icon: 'tool',
     children: [
-      { label: 'Nueva Solicitud (Móvil)', link: '/work-orders/new', permission: PERMISSIONS.WorkOrders.Create },
       { label: 'Solicitudes de Servicio', link: '/work-orders', permission: PERMISSIONS.WorkOrders.View },
     ]
   },

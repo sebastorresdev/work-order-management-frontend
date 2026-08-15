@@ -44,6 +44,11 @@ export class AuthService {
   permissions = signal<string[]>([]);
 
   /**
+   * Señal reactiva con las sedes que maneja el usuario autenticado.
+   */
+  branchIds = signal<string[]>([]);
+
+  /**
    * Propiedad computada que evalúa si existe un usuario autenticado activo.
    */
   isAuthenticated = computed(() => !!this.token());
@@ -62,6 +67,7 @@ export class AuthService {
           this.userId.set(me.id);
           this.roles.set(me.roles);
           this.permissions.set(me.permissions);
+          this.branchIds.set(me.branchIds ?? []);
         }),
         catchError(() => {
           this.logout();
@@ -92,6 +98,7 @@ export class AuthService {
         this.userId.set(me.id);
         this.roles.set(me.roles);
         this.permissions.set(me.permissions);
+        this.branchIds.set(me.branchIds ?? []);
       })
     );
   }
@@ -104,6 +111,7 @@ export class AuthService {
     this.userId.set(null);
     this.roles.set([]);
     this.permissions.set([]);
+    this.branchIds.set([]);
 
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');

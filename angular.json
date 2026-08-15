@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "skvia-attendance-frontend": {
+    "work-order-management-frontend": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -71,10 +71,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "skvia-attendance-frontend:build:production"
+              "buildTarget": "work-order-management-frontend:build:production"
             },
             "development": {
-              "buildTarget": "skvia-attendance-frontend:build:development"
+              "buildTarget": "work-order-management-frontend:build:development"
             }
           },
           "defaultConfiguration": "development"
