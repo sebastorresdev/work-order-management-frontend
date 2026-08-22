@@ -1,0 +1,241 @@
+<div class="space-y-6">
+  <!-- Cabecera -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-700/60">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <span class="p-2 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
+          <nz-icon nzType="dollar-circle" nzTheme="outline"></nz-icon>
+        </span>
+        Matriz de Tarifas por Servicio
+      </h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Administra los pagos fijos, variables por indicadores (Cycle Time, Agenda, SIN 30) y puntos asignados a cada tipo de atención.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button nz-button nzType="default" (click)="openImportModal()" class="flex items-center gap-2">
+        <nz-icon nzType="file-excel" nzTheme="outline" class="text-emerald-600 dark:text-emerald-400"></nz-icon>
+        Importar Excel
+      </button>
+      <button nz-button nzType="default" (click)="seedDefaults()" [nzLoading]="loading()">
+        <nz-icon nzType="reload" nzTheme="outline"></nz-icon>
+        Tarifas por Defecto
+      </button>
+      <button nz-button nzType="primary" (click)="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500">
+        <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+        Nueva Tarifa
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Tarifas -->
+  <nz-card [nzBordered]="false" class="rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-700/60">
+    <nz-table
+      #basicTable
+      [nzData]="tariffs()"
+      [nzLoading]="loading()"
+      [nzPageSize]="15"
+      nzSize="middle"
+      class="w-full">
+      <thead>
+        <tr>
+          <th>Código SL</th>
+          <th>Tipificación</th>
+          <th>Detalle del Servicio</th>
+          <th>Puntos</th>
+          <th>Base (S/)</th>
+          <th>Base Adic. (S/)</th>
+          <th>Variable (S/)</th>
+          <th>Cycle Time (S/)</th>
+          <th>Agenda (S/)</th>
+          <th>SIN 30 (S/)</th>
+          <th>Total Max (S/)</th>
+          <th>Estado</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let data of basicTable.data">
+          <td>
+            <span class="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-lg text-xs">
+              {{ data.code }}
+            </span>
+          </td>
+          <td class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ data.tipificacion }}</td>
+          <td class="text-xs text-slate-600 dark:text-slate-400">{{ data.serviceDetail }}</td>
+          <td>
+            <nz-tag nzColor="blue" class="rounded-full px-2 font-medium">{{ data.points }} pts</nz-tag>
+          </td>
+          <td class="font-semibold text-slate-900 dark:text-white">S/ {{ data.baseAmount | number:'1.2-2' }}</td>
+          <td class="text-slate-600 dark:text-slate-400">S/ {{ data.baseAdicionalAmount | number:'1.2-2' }}</td>
+          <td class="text-slate-600 dark:text-slate-400">S/ {{ data.variableAmount | number:'1.2-2' }}</td>
+          <td class="text-slate-600 dark:text-slate-400">S/ {{ data.cycleTimeAmount | number:'1.2-2' }}</td>
+          <td class="text-slate-600 dark:text-slate-400">S/ {{ data.cumplimientoAgendaAmount | number:'1.2-2' }}</td>
+          <td class="text-slate-600 dark:text-slate-400">S/ {{ data.sin30Amount | number:'1.2-2' }}</td>
+          <td class="font-bold text-emerald-600 dark:text-emerald-400">
+            S/ {{ calculateTotalPreview(data) | number:'1.2-2' }}
+          </td>
+          <td>
+            <nz-tag [nzColor]="data.appliesPayment ? 'success' : 'error'">
+              {{ data.appliesPayment ? 'Aplica Pago' : 'No Aplica' }}
+            </nz-tag>
+          </td>
+          <td class="text-right">
+            <button nz-button nzType="link" (click)="openEditModal(data)">
+              <nz-icon nzType="edit" nzTheme="outline"></nz-icon> Editar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </nz-card>
+
+  <!-- Modal Crear/Editar Tarifa -->
+  <nz-modal
+    [(nzVisible)]="modalVisible"
+    nzTitle="Gestión de Tarifa de Servicio"
+    (nzOnCancel)="handleCancel()"
+    (nzOnOk)="saveTariff()"
+    [nzOkLoading]="saving()"
+    nzWidth="720px">
+    <ng-container *nzModalContent>
+      <form nz-form nzLayout="vertical" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Código de Servicio (SL)</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="currentTariff.code" name="code" placeholder="Ej: IB01, L33, IA05" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Tipificación</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="currentTariff.tipificacion" name="tipificacion" placeholder="Ej: INSTALACION, SERVICIOS TECNICOS" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="md:col-span-2">
+          <nz-form-item>
+            <nz-form-label nzRequired>Detalle del Servicio</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="currentTariff.serviceDetail" name="serviceDetail" placeholder="Ej: Instalación Básica Casa" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Puntos Asignados</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.points" name="points" [nzMin]="0" [nzStep]="1" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Monto Base Fijo (S/)</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.baseAmount" name="baseAmount" [nzMin]="0" [nzStep]="1" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Variable General (S/)</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.variableAmount" name="variableAmount" [nzMin]="0" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Cycle Time Variable (S/)</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.cycleTimeAmount" name="cycleTimeAmount" [nzMin]="0" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Cumplimiento Agenda Variable (S/)</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.cumplimientoAgendaAmount" name="cumplimientoAgendaAmount" [nzMin]="0" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>SIN 30 Variable (S/)</nz-form-label>
+            <nz-form-control>
+              <nz-input-number [(ngModel)]="currentTariff.sin30Amount" name="sin30Amount" [nzMin]="0" class="w-full"></nz-input-number>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="flex items-center gap-3 mt-4">
+          <nz-switch [(ngModel)]="currentTariff.appliesPayment" name="appliesPayment"></nz-switch>
+          <span class="text-sm font-medium">¿Aplica Pago para este servicio?</span>
+        </div>
+      </form>
+    </ng-container>
+  </nz-modal>
+
+  <!-- Modal Importar Excel de Tarifas -->
+  <nz-modal
+    [(nzVisible)]="importModalVisible"
+    nzTitle="Importar Matriz de Tarifas desde Excel"
+    (nzOnCancel)="handleImportCancel()"
+    (nzOnOk)="executeImport()"
+    [nzOkLoading]="importing()"
+    [nzOkDisabled]="!selectedFile()"
+    nzOkText="Procesar E Importar"
+    nzWidth="600px">
+    <ng-container *nzModalContent>
+      <div class="space-y-4">
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          Selecciona tu archivo Excel (.xlsx / .xls) con el tarifario. El sistema identificará automáticamente los códigos de servicio (SL / IBS) y actualizará o creará las tarifas correspondientes en la base de datos.
+        </p>
+
+        <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100/60 dark:hover:bg-slate-800/60 transition">
+          <input type="file" (change)="onFileSelected($event)" accept=".xlsx, .xls" class="hidden" #fileInput />
+          <div class="flex flex-col items-center gap-2">
+            <span class="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-full text-2xl">
+              <nz-icon nzType="file-excel" nzTheme="outline"></nz-icon>
+            </span>
+            <div *ngIf="selectedFile(); else noFile">
+              <p class="font-semibold text-sm text-slate-800 dark:text-slate-200">{{ selectedFile()?.name }}</p>
+              <p class="text-xs text-slate-500 font-mono">{{ (selectedFile()?.size || 0) / 1024 | number:'1.0-1' }} KB</p>
+            </div>
+            <ng-template #noFile>
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Arrastra o haz clic para seleccionar tu archivo Excel</p>
+              <p class="text-xs text-slate-400">Archivos soportados: .xlsx, .xls</p>
+            </ng-template>
+            <button nz-button nzType="default" nzSize="small" (click)="fileInput.click()" class="mt-2">
+              <nz-icon nzType="upload" nzTheme="outline"></nz-icon> {{ selectedFile() ? 'Cambiar Archivo' : 'Buscar Archivo' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Resumen del resultado de importación -->
+        <div *ngIf="importResult()" class="space-y-2">
+          <nz-alert
+            nzType="success"
+            [nzMessage]="'Importación finalizada con éxito'"
+            [nzDescription]="'Procesados: ' + importResult()?.totalProcessed + ' | Registros creados: ' + importResult()?.insertedCount + ' | Registros actualizados: ' + importResult()?.updatedCount"
+            nzShowIcon>
+          </nz-alert>
+        </div>
+      </div>
+    </ng-container>
+  </nz-modal>
+</div>
+

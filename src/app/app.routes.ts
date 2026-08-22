@@ -64,9 +64,28 @@ export const routes: Routes = [
       },
 
       {
+        path: 'backoffice-workbench',
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/backoffice/backoffice-workbench').then(m => m.BackofficeWorkbenchComponent)
+      },
+
+      {
+        path: 'vendedor-requests',
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/vendedor/vendedor-request-list').then(m => m.VendedorRequestListComponent)
+      },
+
+
+      {
         path: 'reports',
         canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
         loadComponent: () => import('./features/reports/reports').then(m => m.ReportsComponent)
+      },
+
+      {
+        path: 'tariffs',
+        canActivate: [permissionGuard(PERMISSIONS.WorkOrders.View)],
+        loadComponent: () => import('./features/tariffs/tariff-list').then(m => m.TariffListComponent)
       },
 
       {

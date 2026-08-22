@@ -88,4 +88,116 @@ export class WorkOrderService {
     if (branchId) params = params.set('branchId', branchId);
     return this.http.get<any[]>(`${environment.API_URL}/users/technicians`, { params });
   }
+
+  // --- Ingesta SIEBEL & Solicitudes Vendedores ---
+  ingestSiebelExcel(file: File): Observable<IngestSiebelResultDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<IngestSiebelResultDto>(`${this.apiUrl}/ingest-siebel`, formData);
+  }
+
+  createVendedorRequest(payload: CreateVendedorRequestPayload): Observable<string> {
+    return this.http.post<string>(`${this.apiUrl}/vendedor-requests`, payload);
+  }
+
+  getVendedorRequests(vendedorUserId?: string, branchId?: string): Observable<VendedorRequestDto[]> {
+    let params = new HttpParams();
+    if (vendedorUserId) params = params.set('vendedorUserId', vendedorUserId);
+    if (branchId) params = params.set('branchId', branchId);
+    return this.http.get<VendedorRequestDto[]>(`${this.apiUrl}/vendedor-requests`, { params });
+  }
+
+  getBackofficeWorkbench(params?: { searchTerm?: string; statusFilter?: string; branchId?: string }): Observable<BackofficeWorkbenchItemDto[]> {
+    let httpParams = new HttpParams();
+    if (params?.searchTerm) httpParams = httpParams.set('searchTerm', params.searchTerm);
+    if (params?.statusFilter) httpParams = httpParams.set('statusFilter', params.statusFilter);
+    if (params?.branchId) httpParams = httpParams.set('branchId', params.branchId);
+    return this.http.get<BackofficeWorkbenchItemDto[]>(`${this.apiUrl}/backoffice-workbench`, { params: httpParams });
+  }
+
+  assignTechnician(payload: { vendedorRequestId?: string; siebelWorkOrderId?: string; technicianUserId: string }): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/assign-technician`, payload);
+  }
 }
+
+export interface IngestSiebelResultDto {
+  totalProcessed: number;
+  insertedCount: number;
+  updatedCount: number;
+  autoMatchedCount: number;
+  contingencyAlertCount: number;
+  warnings: string[];
+}
+
+export interface CreateVendedorRequestPayload {
+  clientNumber: string;
+  serviceCode: string;
+  realClientName: string;
+  realClientDocument: string;
+  realClientPhone: string;
+  realInstallationAddress: string;
+  realDistrict: string;
+  realProvince: string;
+  notes: string;
+  isPlanVecino: boolean;
+  dispatchType: string;
+  decoderCount?: number;
+  vendedorUserId?: string;
+  branchId?: string;
+}
+
+export interface VendedorRequestDto {
+  id: string;
+  clientNumber: string;
+  serviceCode: string;
+  realClientName: string;
+  realClientDocument: string;
+  realClientPhone: string;
+  realInstallationAddress: string;
+  realDistrict: string;
+  realProvince: string;
+  notes: string;
+  isPlanVecino: boolean;
+  dispatchType: string;
+  decoderCount?: number;
+  status: string;
+  isMatched: boolean;
+  siebelWoNumber?: string;
+  siebelStatus?: string;
+  assignedTechnicianName?: string;
+  createdAt: string;
+}
+
+
+export interface BackofficeWorkbenchItemDto {
+  siebelWorkOrderId?: string;
+  vendedorRequestId?: string;
+  clientNumber: string;
+  serviceCode: string;
+  serviceDescription: string;
+  woNumber: string;
+  orderHeaderId: string;
+  itemNumber: number;
+  branchName?: string;
+  siebelStatus: string;
+
+  siebelGlobalStatus: string;
+  externalScheduling: string;
+  isExternalScheduling: boolean;
+  siebelTechnicianName: string;
+  requiresContingencyDischarge: boolean;
+  isMatched: boolean;
+  vendedorName: string;
+  realClientName: string;
+  realClientPhone: string;
+  realInstallationAddress: string;
+  realDistrict: string;
+  isPlanVecino: boolean;
+  dispatchType: string;
+  internalStatus: string;
+  assignedTechnicianId?: string;
+  assignedTechnicianName: string;
+  creationDate?: string;
+}
+
+

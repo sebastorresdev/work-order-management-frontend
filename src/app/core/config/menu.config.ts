@@ -9,14 +9,18 @@ export const MENU: MenuGroup[] = [
     title: 'Operaciones',
     icon: 'tool',
     children: [
-      { label: 'Solicitudes de Servicio', link: '/work-orders', permission: PERMISSIONS.WorkOrders.View },
+      { label: 'Bandeja Operativa', link: '/backoffice-workbench', permission: PERMISSIONS.WorkOrders.View },
+      { label: 'Solicitudes de Venta', link: '/vendedor-requests', permission: PERMISSIONS.WorkOrders.View },
     ]
   },
+
+
   {
     title: 'Analítica',
     icon: 'bar-chart',
     children: [
-      { label: 'Reportes y Analítica', link: '/reports', permission: PERMISSIONS.WorkOrders.View },
+      { label: 'Liquidación y Reportería', link: '/reports', permission: PERMISSIONS.WorkOrders.View },
+      { label: 'Matriz de Tarifas', link: '/tariffs', permission: PERMISSIONS.WorkOrders.View },
     ]
   },
   {

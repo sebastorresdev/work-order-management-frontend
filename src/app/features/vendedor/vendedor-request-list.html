@@ -1,0 +1,198 @@
+<div class="space-y-6">
+  <!-- Cabecera -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-700/60">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+        <span class="p-2 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
+          <nz-icon nzType="shopping-cart" nzTheme="outline"></nz-icon>
+        </span>
+        Solicitudes de Atención y Despacho
+      </h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Registra los pedidos de atención para clientes reales (Instalación Domiciliaria, Plan Vecino o Envíos por Encomienda).
+      </p>
+    </div>
+    <div>
+      <button nz-button nzType="primary" (click)="openCreateModal()" class="bg-emerald-600 hover:bg-emerald-500 flex items-center gap-2">
+        <nz-icon nzType="plus" nzTheme="outline"></nz-icon>
+        Nueva Solicitud Vendedor
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Solicitudes -->
+  <nz-card [nzBordered]="false" class="rounded-2xl shadow-sm border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
+    <nz-table
+      #basicTable
+      [nzData]="requests()"
+      [nzLoading]="loading()"
+      [nzPageSize]="15"
+      [nzScroll]="{ x: '1300px' }"
+      nzSize="middle"
+      class="w-full">
+      <thead>
+        <tr>
+          <th nzWidth="130px">Código Cliente</th>
+          <th nzWidth="120px">Servicio IBS</th>
+          <th nzWidth="110px">Cant. Decos</th>
+          <th nzWidth="180px">Cliente Real</th>
+          <th nzWidth="130px">Teléfono Contacto</th>
+          <th nzWidth="220px">Dirección / Destino</th>
+          <th nzWidth="120px">Distrito</th>
+          <th nzWidth="150px">Tipo Atención</th>
+          <th nzWidth="180px">Estado Operativo</th>
+          <th nzWidth="160px">Técnico Asignado</th>
+          <th nzWidth="140px">Fecha</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let data of basicTable.data">
+          <td>
+            <span class="font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-lg text-xs">
+              {{ data.clientNumber }}
+            </span>
+          </td>
+          <td>
+            <nz-tag nzColor="blue" class="font-bold">{{ data.serviceCode }}</nz-tag>
+          </td>
+          <td>
+            <span class="font-bold text-slate-800 dark:text-slate-200 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+              📦 {{ data.decoderCount || 1 }} {{ (data.decoderCount || 1) === 1 ? 'Deco' : 'Decos' }}
+            </span>
+          </td>
+
+          <td class="font-medium text-slate-800 dark:text-slate-200">{{ data.realClientName }}</td>
+          <td class="text-xs text-slate-600 dark:text-slate-400">{{ data.realClientPhone }}</td>
+          <td class="text-xs text-slate-700 dark:text-slate-300 max-w-xs truncate" [title]="data.realInstallationAddress">{{ data.realInstallationAddress }}</td>
+          <td class="text-xs text-slate-500">{{ data.realDistrict }}</td>
+          <td>
+            <nz-tag [nzColor]="getDispatchTypeColor(data.dispatchType, data.isPlanVecino)">
+              {{ getDispatchTypeLabel(data.dispatchType, data.isPlanVecino) }}
+            </nz-tag>
+          </td>
+          <td>
+            <nz-tag [nzColor]="getStatusTagColor(data.status)">
+              {{ getStatusLabel(data.status) }}
+            </nz-tag>
+          </td>
+          <td class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            {{ data.assignedTechnicianName || 'Por Asignar' }}
+          </td>
+          <td class="text-xs text-slate-400">
+            {{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}
+          </td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </nz-card>
+
+  <!-- Modal Crear Solicitud -->
+  <nz-modal
+    [(nzVisible)]="modalVisible"
+    nzTitle="Registrar Solicitud Operativa de Atención / Despacho"
+    (nzOnCancel)="handleCancel()"
+    (nzOnOk)="saveRequest()"
+    [nzOkLoading]="saving()"
+    nzWidth="680px">
+    <ng-container *nzModalContent>
+      <form nz-form nzLayout="vertical" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Nº de Cliente DIRECTV (Cuenta Matriz)</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.clientNumber" name="clientNumber" placeholder="Ej: 4092819" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Código de Servicio IBS</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.serviceCode" name="serviceCode" placeholder="Ej: IB01, IA01, L33" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Cant. Decos / Ítems Afectados</nz-form-label>
+            <nz-form-control nzExtra="Ej: Si la venta es de 3 decos y 1 va a esta casa, pon 1">
+              <input nz-input type="number" min="1" max="10" [(ngModel)]="newRequest.decoderCount" name="decoderCount" placeholder="Ej: 1" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="md:col-span-2">
+          <nz-form-item>
+            <nz-form-label nzRequired>Tipo de Atención / Despacho</nz-form-label>
+            <nz-form-control>
+              <nz-select [(ngModel)]="newRequest.dispatchType" name="dispatchType" class="w-full">
+                <nz-option nzValue="InstalacionDomicilio" nzLabel="🏠 Instalación Física en Domicilio Titular"></nz-option>
+                <nz-option nzValue="PlanVecino" nzLabel="🏘️ Plan Vecino (Desglose de decodificador a domicilio vecino)"></nz-option>
+                <nz-option nzValue="EnvioEncomienda" nzLabel="📦 Envío por Encomienda / Courier (Sin técnico de campo)"></nz-option>
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+
+        <div>
+          <nz-form-item>
+            <nz-form-label nzRequired>Nombre del Cliente / Destinatario Real</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.realClientName" name="realClientName" placeholder="Nombre completo del cliente real o destinatario" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Documento DNI / RUC</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.realClientDocument" name="realClientDocument" placeholder="DNI del cliente o destinatario" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Teléfono de Contacto Real</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.realClientPhone" name="realClientPhone" placeholder="Teléfono para coordinar entrega o visita" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div>
+          <nz-form-item>
+            <nz-form-label>Distrito Destino</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.realDistrict" name="realDistrict" placeholder="Ej: Trujillo, El Porvenir" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="md:col-span-2">
+          <nz-form-item>
+            <nz-form-label nzRequired>Dirección Real o Agencia de Envío</nz-form-label>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="newRequest.realInstallationAddress" name="realInstallationAddress" placeholder="Dirección física de instalación o datos de agencia encomienda" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="md:col-span-2">
+          <nz-form-item>
+            <nz-form-label>Notas u Observaciones (Guía, Referencias)</nz-form-label>
+            <nz-form-control>
+              <textarea nz-input [(ngModel)]="newRequest.notes" name="notes" rows="2" placeholder="Detalles de agencia encomienda, N° guía, referencias de entrega"></textarea>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </form>
+    </ng-container>
+  </nz-modal>
+</div>
+
