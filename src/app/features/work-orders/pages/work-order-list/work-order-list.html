@@ -110,7 +110,7 @@
           </td>
           <td>
             <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
-              {{ item.statusName }}
+              {{ getStatusLabel(item.status || item.statusName) }}
             </nz-tag>
           </td>
           <td>
@@ -203,7 +203,7 @@
           <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ item.clientName }}</div>
         </div>
         <nz-tag [nzColor]="getStatusColor(item.status)" class="font-bold rounded-md px-2.5">
-          {{ item.statusName }}
+          {{ getStatusLabel(item.status || item.statusName) }}
         </nz-tag>
       </div>
 
@@ -456,7 +456,7 @@
           <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Estado Actual</span>
           <div class="mt-1">
             <nz-tag [nzColor]="getStatusColor(workOrderDetail()!.status)" class="text-sm font-bold px-3 py-0.5 rounded-lg">
-              {{ workOrderDetail()!.statusName }}
+              {{ getStatusLabel(workOrderDetail()!.status || workOrderDetail()!.statusName) }}
             </nz-tag>
           </div>
         </div>

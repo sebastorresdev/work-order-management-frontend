@@ -8,9 +8,10 @@ export enum WorkOrderStatus {
   Pendiente = 1,
   Observado = 2,
   Agendado = 3,
-  Completado = 4,
-  Rechazado = 5,
-  Cancelado = 6
+  Completado = 4, // Atendido en campo, pendiente descargo de material
+  Finalizado = 5, // Atendido Y liquidado material en almacén
+  Rechazado = 6,
+  Cancelado = 7
 }
 
 export enum WorkOrderPriority {

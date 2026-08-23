@@ -178,7 +178,9 @@ export interface BackofficeWorkbenchItemDto {
   woNumber: string;
   orderHeaderId: string;
   itemNumber: number;
+  branchId?: string;
   branchName?: string;
+  siebelBranchName?: string;
   siebelStatus: string;
 
   siebelGlobalStatus: string;
@@ -188,6 +190,7 @@ export interface BackofficeWorkbenchItemDto {
   requiresContingencyDischarge: boolean;
   isMatched: boolean;
   vendedorName: string;
+  siebelClientName?: string;
   realClientName: string;
   realClientPhone: string;
   realInstallationAddress: string;

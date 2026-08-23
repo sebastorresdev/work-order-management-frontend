@@ -15,6 +15,7 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzTimelineModule } from 'ng-zorro-antd/timeline';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { WorkOrderService, BackofficeWorkbenchItemDto, IngestSiebelResultDto } from '../../core/services/work-order.service';
 
@@ -25,8 +26,10 @@ export interface WorkOrderGroup {
   assignedTechnicianId?: string;
   assignedTechnicianName?: string;
   branchName?: string;
+  siebelBranchName?: string;
   items: BackofficeWorkbenchItemDto[];
   totalDecos: number;
+  siebelClientName?: string;
   matchedClientName?: string;
   vendedorName?: string;
   dispatchType?: string;
@@ -57,6 +60,7 @@ export interface WorkOrderGroup {
     NzDropDownModule,
     NzDatePickerModule,
     NzTimelineModule,
+    NzSpinModule,
   ],
   templateUrl: './backoffice-workbench.html',
 })
@@ -82,6 +86,7 @@ export class BackofficeWorkbenchComponent implements OnInit {
   // Assign Modal State
   assignModalVisible = signal<boolean>(false);
   assigning = signal<boolean>(false);
+  loadingTechnicians = signal<boolean>(false);
   selectedGroup = signal<WorkOrderGroup | null>(null);
   selectedTechnicianId: string | null = null;
 
@@ -104,7 +109,6 @@ export class BackofficeWorkbenchComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadWorkbench();
-    this.loadTechnicians();
   }
 
   loadWorkbench(): void {
@@ -121,13 +125,6 @@ export class BackofficeWorkbenchComponent implements OnInit {
         this.message.error('Error al cargar la bandeja operativa del Backoffice.');
         this.loading.set(false);
       }
-    });
-  }
-
-  loadTechnicians(): void {
-    this.workOrderService.getTechniciansByBranch().subscribe({
-      next: (data) => this.technicians.set(data),
-      error: () => console.warn('No se pudieron cargar los técnicos')
     });
   }
 
@@ -158,12 +155,14 @@ export class BackofficeWorkbenchComponent implements OnInit {
           assignedTechnicianId: item.assignedTechnicianId,
           assignedTechnicianName: item.assignedTechnicianName,
           branchName: item.branchName,
+          siebelBranchName: item.siebelBranchName,
           items: [],
           totalDecos: 0,
+          siebelClientName: item.siebelClientName || item.realClientName,
           matchedClientName: item.realClientName,
           vendedorName: item.vendedorName,
           dispatchType: item.dispatchType,
-          internalStatus: item.internalStatus || 'SinSolicitudVendedor',
+          internalStatus: item.internalStatus || 'Pendiente',
           globalSiebelStatus: item.siebelStatus || 'Abierta',
           isMatched: item.isMatched,
           requiresContingency: false,
@@ -200,6 +199,38 @@ export class BackofficeWorkbenchComponent implements OnInit {
       if (item.branchName) branches.add(item.branchName);
     }
     return Array.from(branches);
+  });
+
+  // --- Técnicos Filtrados Estrictamente por la Sede Operativa de la Orden ---
+  availableTechniciansForSelectedGroup = computed(() => {
+    const group = this.selectedGroup();
+    const allTechs = this.technicians();
+    if (!group || !group.branchName) return allTechs;
+
+    const groupBranch = group.branchName.toLowerCase();
+
+    return allTechs.filter(t => {
+      if (!t.branchName) return false;
+      const techBranch = t.branchName.toLowerCase();
+
+      if (groupBranch.includes('chimbote') || groupBranch.includes('i280010')) {
+        return techBranch.includes('chimbote') || techBranch.includes('i280010');
+      }
+      if (groupBranch.includes('trujillo') || groupBranch.includes('i280000')) {
+        return techBranch.includes('trujillo') || techBranch.includes('i280000');
+      }
+      if (groupBranch.includes('chiclayo') || groupBranch.includes('i280020')) {
+        return techBranch.includes('chiclayo') || techBranch.includes('i280020');
+      }
+      if (groupBranch.includes('piura') || groupBranch.includes('i280030')) {
+        return techBranch.includes('piura') || techBranch.includes('i280030');
+      }
+      if (groupBranch.includes('lima') || groupBranch.includes('i280070')) {
+        return techBranch.includes('lima') || techBranch.includes('i280070');
+      }
+
+      return techBranch.includes(groupBranch) || groupBranch.includes(techBranch);
+    });
   });
 
   // --- Drawer Lateral "Ver Detalle" ---
@@ -260,6 +291,37 @@ export class BackofficeWorkbenchComponent implements OnInit {
     this.selectedGroup.set(group);
     this.selectedTechnicianId = group.assignedTechnicianId || null;
     this.assignModalVisible.set(true);
+
+    // Carga a demanda de los técnicos registrados para la sede operativa de la orden
+    const firstItem = group.items[0];
+    const branchId = firstItem?.branchId;
+    this.loadTechniciansForBranch(branchId, group.branchName);
+  }
+
+  loadTechniciansForBranch(branchId?: string, branchName?: string): void {
+    this.loadingTechnicians.set(true);
+    this.technicians.set([]);
+
+    this.workOrderService.getTechniciansByBranch(branchId).subscribe({
+      next: (data) => {
+        let filtered = data;
+        if (branchName && branchName.trim() !== '') {
+          const target = branchName.toLowerCase();
+          const cityMatch = ['piura', 'chimbote', 'trujillo', 'chiclayo', 'lima'].find(c => target.includes(c));
+
+          if (cityMatch) {
+            filtered = data.filter(t => t.branchName && t.branchName.toLowerCase().includes(cityMatch));
+          } else {
+            filtered = data.filter(t => t.branchName && (t.branchName.toLowerCase().includes(target) || target.includes(t.branchName.toLowerCase())));
+          }
+        }
+        this.technicians.set(filtered);
+        this.loadingTechnicians.set(false);
+      },
+      error: () => {
+        this.loadingTechnicians.set(false);
+      }
+    });
   }
 
   handleAssignCancel(): void {
@@ -287,8 +349,9 @@ export class BackofficeWorkbenchComponent implements OnInit {
         this.assigning.set(false);
         this.loadWorkbench();
       },
-      error: () => {
-        this.message.error('Ocurrió un error al asignar el técnico.');
+      error: (err) => {
+        const errorMsg = err?.error?.detail || err?.error?.description || (typeof err?.error === 'string' ? err.error : 'Ocurrió un error al asignar el técnico.');
+        this.message.error(errorMsg);
         this.assigning.set(false);
       }
     });
@@ -301,7 +364,11 @@ export class BackofficeWorkbenchComponent implements OnInit {
     this.actionNotes = '';
     this.scheduledDate = new Date();
 
-    if (type === 'History') {
+    if (type === 'Schedule') {
+      this.selectedTechnicianId = group.assignedTechnicianId || null;
+      const firstItem = group.items[0];
+      this.loadTechniciansForBranch(firstItem?.branchId, group.branchName);
+    } else if (type === 'History') {
       this.loadHistoryForGroup(group);
     }
 
@@ -323,16 +390,45 @@ export class BackofficeWorkbenchComponent implements OnInit {
         this.message.warning('Selecciona una fecha de agendamiento.');
         return;
       }
-      group.internalStatus = 'InProgress';
-      this.message.success(`Estado Interno actualizado a [Agendada] para el ${this.scheduledDate.toLocaleDateString()} (${this.scheduledSlot}). (Nota: El Estado SIEBEL permanece intacto).`);
-      this.actionModalVisible.set(false);
+      if (!this.selectedTechnicianId) {
+        this.message.warning('Debes seleccionar un Técnico Real Interno para agendar la visita.');
+        return;
+      }
+
+      const firstItem = group.items[0];
+      const isReprogram = group.internalStatus === 'InProgress' || group.internalStatus === 'Assigned';
+      this.actionLoading.set(true);
+
+      this.workOrderService.assignTechnician({
+        vendedorRequestId: firstItem.vendedorRequestId,
+        siebelWorkOrderId: firstItem.siebelWorkOrderId,
+        technicianUserId: this.selectedTechnicianId
+      }).subscribe({
+        next: () => {
+          group.internalStatus = 'InProgress';
+          group.assignedTechnicianId = this.selectedTechnicianId!;
+          const assignedTechObj = this.technicians().find(t => t.id === this.selectedTechnicianId);
+          if (assignedTechObj) {
+            group.assignedTechnicianName = assignedTechObj.userName;
+          }
+          this.actionLoading.set(false);
+          this.actionModalVisible.set(false);
+          this.message.success(`${isReprogram ? 'Reprogramación de visita' : 'Agendamiento de visita'} completado para el ${this.scheduledDate?.toLocaleDateString()} (${this.scheduledSlot}). Estado actualizado a [Visita Agendada].`);
+          this.loadWorkbench();
+        },
+        error: (err) => {
+          this.actionLoading.set(false);
+          const errorMsg = err?.error?.detail || err?.error?.description || (typeof err?.error === 'string' ? err.error : 'Error al registrar el agendamiento.');
+          this.message.error(errorMsg);
+        }
+      });
     } else if (type === 'Observe') {
       if (!this.actionNotes) {
         this.message.warning('Ingresa el motivo de la observación.');
         return;
       }
       group.internalStatus = 'Observed';
-      this.message.info(`Estado Interno actualizado a [Observada]. Motivo registrado.`);
+      this.message.info(`Estado actualizado a [Observada]. Motivo registrado.`);
       this.actionModalVisible.set(false);
     } else if (type === 'Reject') {
       if (!this.actionNotes) {
@@ -340,11 +436,11 @@ export class BackofficeWorkbenchComponent implements OnInit {
         return;
       }
       group.internalStatus = 'Cancelled';
-      this.message.warning(`Estado Interno actualizado a [Rechazada].`);
+      this.message.warning(`Estado actualizado a [Rechazada].`);
       this.actionModalVisible.set(false);
     } else if (type === 'Complete') {
       group.internalStatus = 'Completed';
-      this.message.success(`Estado Interno actualizado a [Finalizada Operativamente].`);
+      this.message.success(`Estado actualizado a [Finalizada Operativamente].`);
       this.actionModalVisible.set(false);
     }
   }
@@ -357,31 +453,32 @@ export class BackofficeWorkbenchComponent implements OnInit {
     ]);
   }
 
-  // Label amigable para el Estado Interno SKVIA
+  // Label amigable para el Estado Operativo de la Atención (Sin mezclar la vinculación SIEBEL)
   getInternalStatusLabel(status: string): string {
     switch (status) {
-      case 'PendingSiebelMatch': return '⏳ Pendiente Cruce SIEBEL';
-      case 'Matched': return '🟢 Vinculada (Pend. Agendar)';
-      case 'Assigned': return '👤 Técnico Asignado';
+      case 'Assigned':
       case 'InProgress': return '🗓️ Visita Agendada';
       case 'Observed': return '⚠️ Observada';
-      case 'Completed': return '✅ Cierre Operacional';
-      case 'Cancelled': return '❌ Rechazada';
-      case 'SinSolicitudVendedor': return '⚪ Venta Estándar';
-      default: return status || 'Pendiente';
+      case 'Completed':
+      case 'PendingMaterialDischarge': return '📦 Completada (Pend. Descargo Material)';
+      case 'Finalized': return '✅ Finalizada (Atendido + Material Liquidado)';
+      case 'Cancelled':
+      case 'Rejected': return '❌ Rechazada';
+      default: return '⏳ Pendiente';
     }
   }
 
   getInternalStatusColor(status: string): string {
     switch (status) {
-      case 'PendingSiebelMatch': return 'warning';
-      case 'Matched': return 'processing';
-      case 'Assigned': return 'blue';
+      case 'Assigned':
       case 'InProgress': return 'cyan';
       case 'Observed': return 'orange';
-      case 'Completed': return 'success';
-      case 'Cancelled': return 'error';
-      default: return 'default';
+      case 'Completed':
+      case 'PendingMaterialDischarge': return 'blue';
+      case 'Finalized': return 'success';
+      case 'Cancelled':
+      case 'Rejected': return 'error';
+      default: return 'warning';
     }
   }
 

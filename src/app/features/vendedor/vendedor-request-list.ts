@@ -11,6 +11,7 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { BranchService } from '../branch/services/branch-service';
 import { WorkOrderService, VendedorRequestDto, CreateVendedorRequestPayload } from '../../core/services/work-order.service';
 
 @Component({
@@ -34,9 +35,11 @@ import { WorkOrderService, VendedorRequestDto, CreateVendedorRequestPayload } fr
 })
 export class VendedorRequestListComponent implements OnInit {
   private workOrderService = inject(WorkOrderService);
+  private branchService = inject(BranchService);
   private message = inject(NzMessageService);
 
   requests = signal<VendedorRequestDto[]>([]);
+  branches = signal<any[]>([]);
   loading = signal<boolean>(false);
   modalVisible = signal<boolean>(false);
   saving = signal<boolean>(false);
@@ -45,6 +48,19 @@ export class VendedorRequestListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRequests();
+    this.loadBranches();
+  }
+
+  loadBranches(): void {
+    this.branchService.getAll().subscribe({
+      next: (list: any) => {
+        const branchesList = list?.data || list?.items || list || [];
+        this.branches.set(branchesList);
+        if (branchesList.length > 0 && !this.newRequest.branchId) {
+          this.newRequest.branchId = branchesList[0].id;
+        }
+      }
+    });
   }
 
   loadRequests(): void {
@@ -63,6 +79,9 @@ export class VendedorRequestListComponent implements OnInit {
 
   openCreateModal(): void {
     this.newRequest = this.getEmptyPayload();
+    if (this.branches().length > 0) {
+      this.newRequest.branchId = this.branches()[0].id;
+    }
     this.modalVisible.set(true);
   }
 
@@ -71,8 +90,8 @@ export class VendedorRequestListComponent implements OnInit {
   }
 
   saveRequest(): void {
-    if (!this.newRequest.clientNumber || !this.newRequest.realClientName || !this.newRequest.realInstallationAddress) {
-      this.message.warning('Por favor completa el Nº de Cliente DIRECTV, Nombre de Cliente Real y Dirección/Destino.');
+    if (!this.newRequest.clientNumber || !this.newRequest.realClientName || !this.newRequest.realInstallationAddress || !this.newRequest.branchId) {
+      this.message.warning('Por favor completa el Nº de Cliente DIRECTV, Sede Operativa de Atención, Nombre de Cliente y Dirección.');
       return;
     }
 

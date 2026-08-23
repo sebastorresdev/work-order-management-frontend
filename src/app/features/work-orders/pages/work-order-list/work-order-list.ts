@@ -455,14 +455,50 @@ export class WorkOrderList implements OnInit {
   }
 
   // --- Helper Tags & Badges ---
-  getStatusColor(status: WorkOrderStatus): string {
-    switch (status) {
-      case WorkOrderStatus.Pendiente: return 'gold';
-      case WorkOrderStatus.Observado: return 'volcano';
-      case WorkOrderStatus.Agendado: return 'cyan';
-      case WorkOrderStatus.Completado: return 'green';
-      case WorkOrderStatus.Rechazado: return 'red';
-      case WorkOrderStatus.Cancelado: return 'default';
+  getStatusLabel(status: WorkOrderStatus | string | number): string {
+    const s = String(status);
+    switch (s) {
+      case 'Pendiente':
+      case 'PendingSiebelMatch':
+      case '1': return '⏳ Pendiente Cruce SIEBEL';
+      case 'Matched': return '🟢 Vinculada (Pend. Agendar)';
+      case 'Agendado':
+      case 'Assigned':
+      case 'InProgress':
+      case '3': return '🗓️ Visita Agendada';
+      case 'Observado':
+      case 'Observed':
+      case '2': return '⚠️ Observada';
+      case 'Completado':
+      case 'Completed':
+      case '4': return '✅ Cierre Operacional';
+      case 'Rechazado':
+      case 'Cancelled':
+      case '5': return '❌ Rechazada';
+      default: return s || 'Pendiente';
+    }
+  }
+
+  getStatusColor(status: WorkOrderStatus | string): string {
+    const s = String(status);
+    switch (s) {
+      case 'Pendiente':
+      case 'PendingSiebelMatch':
+      case '1': return 'gold';
+      case 'Matched': return 'processing';
+      case 'Observado':
+      case 'Observed':
+      case '2': return 'volcano';
+      case 'Agendado':
+      case 'Assigned':
+      case 'InProgress':
+      case '3': return 'cyan';
+      case 'Completado':
+      case 'Completed':
+      case '4': return 'green';
+      case 'Rechazado':
+      case 'Cancelled':
+      case '5': return 'red';
       default: return 'blue';
     }
   }

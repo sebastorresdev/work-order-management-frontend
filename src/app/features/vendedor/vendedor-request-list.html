@@ -126,6 +126,19 @@
 
         <div class="md:col-span-2">
           <nz-form-item>
+            <nz-form-label nzRequired>Sede Operativa de Atención / Sucursal Destino</nz-form-label>
+            <nz-form-control nzExtra="Sucursal encargada de coordinar la visita y asignar al técnico local">
+              <nz-select [(ngModel)]="newRequest.branchId" name="branchId" nzPlaceHolder="Seleccionar Sede Operativa..." class="w-full">
+                @for (b of branches(); track b.id) {
+                  <nz-option [nzValue]="b.id" [nzLabel]="'📍 ' + b.name + ' (' + b.code + ')'"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+
+        <div class="md:col-span-2">
+          <nz-form-item>
             <nz-form-label nzRequired>Tipo de Atención / Despacho</nz-form-label>
             <nz-form-control>
               <nz-select [(ngModel)]="newRequest.dispatchType" name="dispatchType" class="w-full">
