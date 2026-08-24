@@ -107,15 +107,36 @@ export class WorkOrderService {
     return this.http.get<VendedorRequestDto[]>(`${this.apiUrl}/vendedor-requests`, { params });
   }
 
-  getBackofficeWorkbench(params?: { searchTerm?: string; statusFilter?: string; branchId?: string }): Observable<BackofficeWorkbenchItemDto[]> {
+  getBackofficeWorkbench(params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    statusFilter?: string;
+    branchId?: string;
+    branchName?: string;
+    externalSchedulingFilter?: string;
+    technicianId?: string;
+  }): Observable<PaginatedResponse<BackofficeWorkbenchItemDto>> {
     let httpParams = new HttpParams();
+    if (params?.pageNumber) httpParams = httpParams.set('pageNumber', params.pageNumber);
+    if (params?.pageSize) httpParams = httpParams.set('pageSize', params.pageSize);
     if (params?.searchTerm) httpParams = httpParams.set('searchTerm', params.searchTerm);
     if (params?.statusFilter) httpParams = httpParams.set('statusFilter', params.statusFilter);
     if (params?.branchId) httpParams = httpParams.set('branchId', params.branchId);
-    return this.http.get<BackofficeWorkbenchItemDto[]>(`${this.apiUrl}/backoffice-workbench`, { params: httpParams });
+    if (params?.branchName) httpParams = httpParams.set('branchName', params.branchName);
+    if (params?.externalSchedulingFilter) httpParams = httpParams.set('externalSchedulingFilter', params.externalSchedulingFilter);
+    if (params?.technicianId) httpParams = httpParams.set('technicianId', params.technicianId);
+    return this.http.get<PaginatedResponse<BackofficeWorkbenchItemDto>>(`${this.apiUrl}/backoffice-workbench`, { params: httpParams });
   }
 
-  assignTechnician(payload: { vendedorRequestId?: string; siebelWorkOrderId?: string; technicianUserId: string }): Observable<void> {
+  assignTechnician(payload: {
+    vendedorRequestId?: string;
+    siebelWorkOrderId?: string;
+    technicianUserId: string;
+    scheduledDate?: string;
+    scheduledSlot?: string;
+    notes?: string;
+  }): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/assign-technician`, payload);
   }
 }
@@ -201,6 +222,9 @@ export interface BackofficeWorkbenchItemDto {
   assignedTechnicianId?: string;
   assignedTechnicianName: string;
   creationDate?: string;
+  scheduledDate?: string;
+  scheduledSlot?: string;
+  notes?: string;
 }
 
 

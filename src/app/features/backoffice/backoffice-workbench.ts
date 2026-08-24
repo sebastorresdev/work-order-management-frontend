@@ -38,6 +38,9 @@ export interface WorkOrderGroup {
   isMatched: boolean;
   requiresContingency: boolean;
   isExternalScheduling: boolean;
+  scheduledDate?: string;
+  scheduledSlot?: string;
+  notes?: string;
 }
 
 @Component({
@@ -69,13 +72,21 @@ export class BackofficeWorkbenchComponent implements OnInit {
   private message = inject(NzMessageService);
 
   workbenchItems = signal<BackofficeWorkbenchItemDto[]>([]);
+  allTechnicians = signal<any[]>([]);
   technicians = signal<any[]>([]);
   loading = signal<boolean>(false);
+
+  // Pagination Signals
+  pageNumber = signal<number>(1);
+  pageSize = signal<number>(10);
+  totalItems = signal<number>(0);
 
   // Filters
   searchTerm: string = '';
   statusFilter: string = 'All';
   branchFilter: string = 'All';
+  externalSchedulingFilter: string = 'All';
+  technicianFilter: string = 'All';
 
   // Ingest Modal State
   ingestModalVisible = signal<boolean>(false);
@@ -109,16 +120,40 @@ export class BackofficeWorkbenchComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadWorkbench();
+    this.loadAllTechnicians();
   }
 
-  loadWorkbench(): void {
-    this.loading.set(true);
-    this.workOrderService.getBackofficeWorkbench({
-      searchTerm: this.searchTerm,
-      statusFilter: this.statusFilter
-    }).subscribe({
+  loadAllTechnicians(): void {
+    this.workOrderService.getTechniciansByBranch(undefined).subscribe({
       next: (data) => {
-        this.workbenchItems.set(data);
+        this.allTechnicians.set(data);
+      },
+      error: () => {}
+    });
+  }
+
+  loadWorkbench(pageIndex?: number): void {
+    if (pageIndex) {
+      this.pageNumber.set(pageIndex);
+    }
+    this.loading.set(true);
+
+    const techId = (this.technicianFilter === 'All' || this.technicianFilter === 'Unassigned')
+      ? undefined
+      : this.technicianFilter;
+
+    this.workOrderService.getBackofficeWorkbench({
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+      searchTerm: this.searchTerm,
+      statusFilter: this.statusFilter,
+      branchName: this.branchFilter === 'All' ? undefined : this.branchFilter,
+      externalSchedulingFilter: this.externalSchedulingFilter === 'All' ? undefined : this.externalSchedulingFilter,
+      technicianId: techId
+    }).subscribe({
+      next: (response) => {
+        this.workbenchItems.set(response.items);
+        this.totalItems.set(response.totalCount);
         this.loading.set(false);
       },
       error: () => {
@@ -128,15 +163,22 @@ export class BackofficeWorkbenchComponent implements OnInit {
     });
   }
 
+  applyFilters(): void {
+    this.loadWorkbench(1);
+  }
+
+  onPageIndexChange(page: number): void {
+    this.loadWorkbench(page);
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.loadWorkbench(1);
+  }
+
   // --- Agrupación Inteligente por Encabezado de Orden + Solicitud + Técnico + Cliente ---
   groupedWorkbenchItems = computed(() => {
-    let rawItems = this.workbenchItems();
-
-    // Aplicar filtro de Sede
-    if (this.branchFilter !== 'All') {
-      rawItems = rawItems.filter(i => i.branchName && i.branchName.toLowerCase().includes(this.branchFilter.toLowerCase()));
-    }
-
+    const rawItems = this.workbenchItems();
     const groupsMap = new Map<string, WorkOrderGroup>();
 
     for (const item of rawItems) {
@@ -166,7 +208,10 @@ export class BackofficeWorkbenchComponent implements OnInit {
           globalSiebelStatus: item.siebelStatus || 'Abierta',
           isMatched: item.isMatched,
           requiresContingency: false,
-          isExternalScheduling: false
+          isExternalScheduling: false,
+          scheduledDate: item.scheduledDate,
+          scheduledSlot: item.scheduledSlot,
+          notes: item.notes
         });
       }
 
@@ -361,8 +406,11 @@ export class BackofficeWorkbenchComponent implements OnInit {
   openActionModalForGroup(type: 'Schedule' | 'Observe' | 'Reject' | 'Complete' | 'History', group: WorkOrderGroup): void {
     this.selectedGroup.set(group);
     this.actionModalType.set(type);
-    this.actionNotes = '';
-    this.scheduledDate = new Date();
+    this.actionNotes = group.notes || '';
+    this.scheduledDate = group.scheduledDate ? new Date(group.scheduledDate) : new Date();
+    if (group.scheduledSlot) {
+      this.scheduledSlot = group.scheduledSlot;
+    }
 
     if (type === 'Schedule') {
       this.selectedTechnicianId = group.assignedTechnicianId || null;
@@ -399,21 +447,35 @@ export class BackofficeWorkbenchComponent implements OnInit {
       const isReprogram = group.internalStatus === 'InProgress' || group.internalStatus === 'Assigned';
       this.actionLoading.set(true);
 
+      let formattedDate: string | undefined;
+      if (this.scheduledDate) {
+        const d = new Date(this.scheduledDate);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
+      }
+
       this.workOrderService.assignTechnician({
         vendedorRequestId: firstItem.vendedorRequestId,
         siebelWorkOrderId: firstItem.siebelWorkOrderId,
-        technicianUserId: this.selectedTechnicianId
+        technicianUserId: this.selectedTechnicianId,
+        scheduledDate: formattedDate,
+        scheduledSlot: this.scheduledSlot,
+        notes: this.actionNotes
       }).subscribe({
         next: () => {
           group.internalStatus = 'InProgress';
           group.assignedTechnicianId = this.selectedTechnicianId!;
+          group.scheduledDate = formattedDate;
+          group.scheduledSlot = this.scheduledSlot;
           const assignedTechObj = this.technicians().find(t => t.id === this.selectedTechnicianId);
           if (assignedTechObj) {
             group.assignedTechnicianName = assignedTechObj.userName;
           }
           this.actionLoading.set(false);
           this.actionModalVisible.set(false);
-          this.message.success(`${isReprogram ? 'Reprogramación de visita' : 'Agendamiento de visita'} completado para el ${this.scheduledDate?.toLocaleDateString()} (${this.scheduledSlot}). Estado actualizado a [Visita Agendada].`);
+          this.message.success(`${isReprogram ? 'Reprogramación de visita' : 'Agendamiento de visita'} completado para el ${formattedDate} (${this.scheduledSlot}). Estado actualizado a [Visita Agendada].`);
           this.loadWorkbench();
         },
         error: (err) => {
@@ -453,17 +515,17 @@ export class BackofficeWorkbenchComponent implements OnInit {
     ]);
   }
 
-  // Label amigable para el Estado Operativo de la Atención (Sin mezclar la vinculación SIEBEL)
+  // Label amigable para el Estado Operativo de la Atención
   getInternalStatusLabel(status: string): string {
     switch (status) {
       case 'Assigned':
       case 'InProgress': return '🗓️ Visita Agendada';
       case 'Observed': return '⚠️ Observada';
       case 'Completed':
-      case 'PendingMaterialDischarge': return '📦 Completada (Pend. Descargo Material)';
-      case 'Finalized': return '✅ Finalizada (Atendido + Material Liquidado)';
+      case 'PendingMaterialDischarge': return '📦 Completada';
+      case 'Finalized': return '✅ Finalizada';
       case 'Cancelled':
-      case 'Rejected': return '❌ Rechazada';
+      case 'Rejected': return '❌ Cancelada';
       default: return '⏳ Pendiente';
     }
   }
